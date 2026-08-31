@@ -253,7 +253,7 @@
 <body>
 <div class="page">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-    <h1 style="margin-bottom:0;">⚔️ 戦術対抗戦 編成アドバイザー</h1>
+    <h1 style="margin-bottom:0;">⚔️ 戦術対抗戦 編成アドバイザー</span></h1>
     
   </div>
   <div class="tabs">
@@ -439,6 +439,13 @@ try {
 } catch(e){}
 
 const RANGE_BASES = ['350','450','550','650','750','850'];
+
+function resetShieldCfg(){
+  shieldCfg={};
+  try{localStorage.setItem("pvp_shield",JSON.stringify(shieldCfg));}catch(e){}
+  renderSeasonTab();
+  renderResults();
+}
 
 function onShieldCfg(slotN, rangeBase, val){
   setShieldRequired(slotN, rangeBase, val);
@@ -1249,7 +1256,7 @@ function renderSeasonTab(){
 
     <!-- 遮蔽設定 -->
     <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:16px;">
-      <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:6px;">遮蔽設定（スロットごと）</div>
+      <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:6px;"><div style="display:flex;align-items:center;justify-content:space-between"><span>遮蔽設定（スロットごと）</span><button onclick="resetShieldCfg()" style="padding:3px 10px;border-radius:5px;border:1px solid #E5E7EB;background:#F9FAFB;color:#6B7280;font-size:11px;font-family:inherit;cursor:pointer;">おまかせ</button></div></div>
       <p style="font-size:11px;color:#6B7280;margin-bottom:12px;">ONにすると🛡の不一致生徒を除外します。OFFのときは除外せず、スコアにペナルティ係数（shield_penalty）を乗算して表示順を下げます。</p>
       ${shieldHtml}
     </div>
@@ -1544,6 +1551,13 @@ function renderAppSettings(){
     + '<input type="checkbox" id="cfg-show-dmg2" ' + showDmgChecked + ' onchange="applySetting(\'showDmg\',this.checked)" style="width:16px;height:16px;cursor:pointer;flex-shrink:0;"></label>'
     + '</div></div>'
     // スプシ読み込み枠
+    + '<div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;">'
+    + '<div>'
+    + '<div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:3px;">みんなでつくる対抗戦配置辞書　β版</div>'
+    + '<div style="font-size:11px;color:#6B7280;">ルールの閲覧・編集はこちらから</div>'
+    + '</div>'
+    + '<a href="https://docs.google.com/spreadsheets/d/1PJxxzVjp0UCO_nomnBoxo_l2qBVQs1LY-jDI7W5GJNg/edit?usp=sharing" target="_blank" style="padding:6px 14px;border-radius:6px;background:#EFF6FF;border:1px solid #BFDBFE;color:#1E40AF;font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap;">開く ↗</a>'
+    + '</div>'
     + '<div class="sheet-load-area">'
     + '<div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:8px;">みんなでつくる対抗戦配置辞書　β版からルールを読み込む</div>'
     + '<p style="font-size:11px;color:#6B7280;margin-bottom:10px;">コミュニティで共有された配置ルールを取得します。既存のみん辞書ルールは上書きされます（手動登録ルールは保持されます）。</p>'
