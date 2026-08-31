@@ -1,0 +1,1700 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>戦術対抗戦 編成アドバイザー</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Helvetica Neue', Arial, 'Hiragino Sans', sans-serif; font-size: 13px; color: #111827; background: #F3F4F6; padding: 16px; }
+    .page { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 15px; font-weight: 700; color: #1E40AF; margin-bottom: 12px; }
+
+    .tabs { display: flex; margin-bottom: 16px; border-bottom: 2px solid #E5E7EB; }
+    .tab-btn { padding: 7px 20px; font-size: 13px; font-family: inherit; border: none; background: none; cursor: pointer; color: #6B7280; border-bottom: 2px solid transparent; margin-bottom: -2px; white-space: nowrap; }
+    .tab-btn.active { color: #1E40AF; font-weight: 600; border-bottom-color: #3B82F6; }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    .chip { display: inline-block; padding: 0 7px; border-radius: 4px; font-size: 11px; font-weight: 600; border: 1px solid; white-space: nowrap; line-height: 19px; }
+    .chip-爆発,  .chip-軽装備   { background:#FEE2E2; color:#B91C1C; border-color:#FECACA; }
+    .chip-貫通,  .chip-重装甲   { background:#FEF9C3; color:#92400E; border-color:#FDE68A; }
+    .chip-分解,  .chip-複合装甲 { background:#DCFCE7; color:#166534; border-color:#BBF7D0; }
+    .chip-神秘,  .chip-特殊装甲 { background:#DBEAFE; color:#1E40AF; border-color:#BFDBFE; }
+    .chip-振動,  .chip-弾力装甲 { background:#EDE9FE; color:#5B21B6; border-color:#DDD6FE; }
+    .chip-range { background:#F0F9FF; color:#0369A1; border-color:#BAE6FD; }
+
+    .toggle-btn { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; border-radius: 6px; border: 1px solid #BBF7D0; background: #DCFCE7; color: #166534; font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer; margin-bottom: 14px; transition: all .15s; }
+    .toggle-btn.off { background:#F3F4F6; color:#6B7280; border-color:#D1D5DB; }
+    .toggle-dot { width:8px; height:8px; border-radius:50%; background:#166534; flex-shrink:0; }
+    .toggle-btn.off .toggle-dot { background:#9CA3AF; }
+
+    /* D入力パネル */
+    .d-panel { background:#fff; border:1px solid #E5E7EB; border-radius:10px; margin-bottom:14px; overflow:hidden; }
+    .d-panel-header { display:grid; grid-template-columns:repeat(4,1fr); border-bottom:1px solid #E5E7EB; }
+    .d-panel-head { font-size:11px; font-weight:700; color:#B91C1C; padding:6px 10px; background:#FEF2F2; text-align:center; border-right:1px solid #E5E7EB; }
+    .d-panel-head:last-child { border-right:none; }
+    .d-panel-body { display:grid; grid-template-columns:repeat(4,1fr); }
+    .d-slot-col { padding:10px; border-right:1px solid #E5E7EB; }
+    .d-slot-col:last-child { border-right:none; }
+    .field-row { display:flex; align-items:center; gap:5px; margin-bottom:6px; }
+    .field-row:last-child { margin-bottom:0; }
+    .field-lbl { font-size:10px; color:#4B5563; width:24px; flex-shrink:0; font-weight:500; }
+    .field-row select { flex:1; font-size:12px; padding:3px 5px; border:1px solid #E5E7EB; border-radius:5px; background:#F9FAFB; color:#111827; font-family:inherit; cursor:pointer; }
+    .chip-preview { margin-top:5px; min-height:20px; display:flex; flex-wrap:wrap; gap:3px; }
+
+    /* 属性推奨パネル */
+    .result-section-label { font-size:11px; font-weight:700; color:#374151; letter-spacing:.06em; text-transform:uppercase; margin-bottom:8px; }
+    .attr-panel { background:#fff; border:1px solid #E5E7EB; border-radius:10px; margin-bottom:10px; overflow:hidden; }
+    .attr-panel-header { display:grid; grid-template-columns:repeat(4,1fr); border-bottom:1px solid #E5E7EB; background:#EFF6FF; }
+    .attr-panel-head { font-size:11px; font-weight:700; color:#1E40AF; padding:6px 10px; text-align:center; border-right:1px solid #E5E7EB; }
+    .attr-panel-head:last-child { border-right:none; }
+    .attr-panel-body { display:grid; grid-template-columns:repeat(4,1fr); }
+    .attr-slot-col { padding:8px 10px; border-right:1px solid #E5E7EB; min-height:40px; }
+    .attr-slot-col:last-child { border-right:none; }
+
+    .combo-inline-list { display:flex; flex-direction:column; gap:3px; }
+    .combo-inline { display:flex; align-items:center; gap:5px; padding:3px 6px; border-radius:5px; border:1px solid #E5E7EB; background:#FAFAFA; }
+    .combo-inline.rank-1 { background:#F0FFF8; border-color:#6EE7B7; }
+    .rank-badge { width:16px; height:16px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; border:1px solid; }
+    .rb-1 { background:#FEF3C7; color:#92400E; border-color:#FDE68A; }
+    .rb-2 { background:#F1F5F9; color:#475569; border-color:#CBD5E1; }
+    .combo-names { display:flex; align-items:center; gap:3px; flex:1; flex-wrap:wrap; }
+    .combo-x { font-size:10px; color:#D1D5DB; }
+    .combo-scores { display:flex; gap:4px; }
+    .sc { font-size:10px; color:#9CA3AF; display:flex; align-items:center; gap:2px; }
+    .mt { font-size:10px; padding:0 4px; border-radius:3px; font-weight:600; line-height:16px; display:inline-block; }
+    .atk-2{background:#DCFCE7;color:#166534;} .atk-15{background:#D1FAE5;color:#065F46;}
+    .atk-1{background:#F3F4F6;color:#6B7280;} .atk-05{background:#FEE2E2;color:#B91C1C;}
+    .def-05{background:#DCFCE7;color:#166534;} .def-1{background:#F3F4F6;color:#6B7280;} .def-hi{background:#FEE2E2;color:#B91C1C;}
+    .empty-msg { font-size:11px; color:#6B7280; }
+
+    /* 射程ルール照合 */
+    .range-section { margin-top:14px; }
+    .range-section-label { font-size:11px; font-weight:700; color:#374151; letter-spacing:.06em; text-transform:uppercase; margin-bottom:8px; }
+    .range-no-match { font-size:12px; color:#6B7280; padding:6px 0; }
+    .rule-set { background:#fff; border:1px solid #BAE6FD; border-radius:10px; margin-bottom:8px; overflow:hidden; }
+    .rule-set-header { background:#F0F9FF; padding:6px 12px; font-size:11px; font-weight:600; color:#0369A1; border-bottom:1px solid #BAE6FD; }
+    .rule-set-body { display:grid; grid-template-columns:repeat(4,1fr); }
+    .rule-set-col { padding:8px 10px; border-right:1px solid #E5E7EB; min-height:36px; }
+    .rule-set-col:last-child { border-right:none; }
+    .rule-set-col-head { font-size:10px; font-weight:700; color:#0369A1; margin-bottom:4px; }
+    .rule-range-chips { display:flex; flex-wrap:wrap; gap:3px; margin-bottom:5px; }
+    .rule-attr-divider { border-top:1px dashed #E5E7EB; margin:5px 0; }
+    .rule-attr-label { font-size:10px; color:#4B5563; font-weight:600; margin-bottom:3px; }
+
+    /* 相性表 */
+    .matrix-wrap { overflow-x:auto; }
+    .mtx { border-collapse:collapse; font-size:12px; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+    .mtx th,.mtx td { padding:8px 12px; border:1px solid #E5E7EB; text-align:center; }
+    .mtx thead th,.mtx tbody th { background:#F9FAFB; }
+    .mtx tbody th { text-align:left; }
+    .cx2{background:#DCFCE7;color:#166534;font-weight:700;} .cx15{background:#D1FAE5;color:#065F46;font-weight:600;}
+    .cx1{color:#9CA3AF;} .cx05{background:#FEE2E2;color:#B91C1C;}
+
+    /* 射程ルールメモ */
+    .rule-form { background:#fff; border:1px solid #E5E7EB; border-radius:10px; padding:16px; margin-bottom:16px; }
+    .rule-form-title { font-size:12px; font-weight:700; color:#374151; margin-bottom:12px; }
+    .rule-name-row { display:flex; gap:8px; align-items:center; margin-bottom:14px; }
+    .rule-name-input { flex:1; font-size:13px; padding:6px 10px; border:1px solid #E5E7EB; border-radius:6px; font-family:inherit; color:#111827; }
+    .btn-primary { padding:7px 16px; border-radius:6px; border:none; cursor:pointer; font-size:12px; font-family:inherit; font-weight:600; background:#2563EB; color:#fff; white-space:nowrap; }
+    .btn-primary:hover { background:#1D4ED8; }
+    .rule-slots-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .rule-col-title { font-size:11px; font-weight:700; margin-bottom:8px; }
+    .rule-col-title.a { color:#1E40AF; }
+    .rule-col-title.d { color:#B91C1C; }
+    .rule-slot-row { display:flex; gap:6px; align-items:flex-start; margin-bottom:10px; }
+    .rule-slot-num { font-size:11px; color:#9CA3AF; width:22px; padding-top:3px; flex-shrink:0; font-weight:600; }
+    .rule-slot-inputs { display:flex; flex-direction:column; gap:5px; flex:1; }
+    .cb-group { display:flex; flex-wrap:wrap; gap:4px; }
+    .cb-item { display:none; }
+    .cb-label { display:inline-flex; align-items:center; padding:2px 8px; border-radius:4px; border:1px solid #E5E7EB; font-size:11px; cursor:pointer; background:#F9FAFB; color:#374151; transition:all .1s; user-select:none; }
+    .cb-item:checked + .cb-label { background:#0369A1; color:#fff; border-color:#0369A1; }
+    .target-row { display:flex; align-items:center; gap:5px; }
+    .target-lbl { font-size:10px; color:#9CA3AF; white-space:nowrap; }
+    .target-select { font-size:11px; padding:2px 4px; border:1px solid #E5E7EB; border-radius:4px; background:#F9FAFB; color:#111827; font-family:inherit; cursor:pointer; }
+    .save-msg { font-size:11px; color:#059669; margin-left:4px; }
+    .save-err { font-size:11px; color:#B91C1C; margin-left:4px; }
+    .section-label { font-size:11px; font-weight:600; color:#9CA3AF; letter-spacing:.06em; text-transform:uppercase; margin-bottom:10px; }
+    .saved-rules-wrap { max-height:500px; overflow-y:auto; }
+    .rule-card { background:#fff; border:1px solid #E5E7EB; border-radius:8px; margin-bottom:6px; overflow:hidden; }
+    .rule-card-header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; cursor:pointer; user-select:none; }
+    .rule-card-header:hover { background:#F9FAFB; }
+    .rule-card-name { font-size:13px; font-weight:600; color:#111827; }
+    .rule-card-right { display:flex; align-items:center; gap:8px; }
+    .rule-expand-btn { font-size:12px; color:#9CA3AF; transition:transform .2s; }
+    .rule-expand-btn.open { transform:rotate(180deg); }
+    .btn-danger { padding:4px 10px; border-radius:5px; border:1px solid #FECACA; cursor:pointer; font-size:11px; font-family:inherit; background:#FEF2F2; color:#B91C1C; }
+    .btn-danger:hover { background:#FEE2E2; }
+    .btn-edit { padding:4px 10px; border-radius:5px; border:1px solid #BFDBFE; cursor:pointer; font-size:11px; font-family:inherit; background:#EFF6FF; color:#1E40AF; }
+    .btn-edit:hover { background:#DBEAFE; }
+    .edit-form { background:#F0F9FF; border:1px solid #BAE6FD; border-radius:8px; padding:12px; margin-top:8px; }
+    .edit-form-title { font-size:11px; font-weight:700; color:#0369A1; margin-bottom:10px; }
+    .edit-name-row { display:flex; gap:6px; margin-bottom:10px; }
+    .edit-name-input { flex:1; font-size:12px; padding:5px 8px; border:1px solid #BAE6FD; border-radius:5px; font-family:inherit; }
+    .btn-edit-save { padding:5px 12px; border-radius:5px; border:none; cursor:pointer; font-size:11px; font-family:inherit; font-weight:600; background:#0369A1; color:#fff; }
+    .btn-edit-cancel { padding:5px 10px; border-radius:5px; border:1px solid #E5E7EB; cursor:pointer; font-size:11px; font-family:inherit; background:#fff; color:#6B7280; }
+    .rule-card-body { display:none; padding:10px 14px 12px; border-top:1px solid #F3F4F6; }
+    .rule-card-body.open { display:block; }
+    .rule-body-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .rule-body-col-title { font-size:10px; font-weight:700; color:#9CA3AF; margin-bottom:6px; text-transform:uppercase; }
+    .rule-slot-chips { display:flex; align-items:center; gap:4px; flex-wrap:wrap; margin-bottom:4px; }
+    .rule-slot-lbl { font-size:10px; color:#9CA3AF; font-weight:600; }
+    .empty-rules { font-size:13px; color:#D1D5DB; text-align:center; padding:28px 0; }
+    .note { font-size:11px; color:#B0B5BE; margin-top:10px; }
+
+    /* おすすめ生徒ポップアップ */
+    .student-btn-wrap { display: inline-block; margin-top: 6px; }
+    .student-btn {
+      padding: 3px 10px; border-radius: 5px; border: 1px solid #DDD6FE;
+      background: #EDE9FE; color: #5B21B6; font-size: 11px; font-weight: 600;
+      font-family: inherit; cursor: pointer; white-space: nowrap;
+    }
+    .student-btn:hover { background: #DDD6FE; }
+    .student-popup {
+      display: none; position: fixed;
+      background: #fff; border: 1px solid #E5E7EB; border-radius: 10px;
+      padding: 10px; box-shadow: 0 8px 32px rgba(0,0,0,.18);
+      z-index: 9999; min-width: 200px; max-width: 340px;
+    }
+    .student-popup.open { display: block; }
+    .student-popup-title { font-size: 10px; font-weight: 700; color: #6B7280; margin-bottom: 7px; }
+    .student-faces { display: flex; flex-wrap: wrap; gap: 6px; }
+    .student-face { display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: default; }
+    .student-face img { width: 44px; height: 44px; border-radius: 8px; border: 1px solid #E5E7EB; object-fit: cover; background: #F3F4F6; }
+    .student-face img.img-err { background: #F3F4F6; border: 1px dashed #D1D5DB; }
+    .student-face-name { font-size: 9px; color: #6B7280; text-align: center; max-width: 48px; line-height: 1.2; word-break: break-all; }
+    .student-score-bar { display: flex; gap: 2px; }
+    .score-dot { width: 5px; height: 5px; border-radius: 50%; }
+    .score-dot.on  { background: #7C3AED; }
+    .score-dot.off { background: #E5E7EB; }
+    .no-student { font-size: 11px; color: #9CA3AF; }
+
+    /* スライダー（カスタム） */
+    .env-slider-wrap { flex: 1; position: relative; height: 20px; display: flex; align-items: center; cursor: pointer; }
+    .env-slider-track { width: 100%; height: 6px; border-radius: 3px; background: #D1D5DB; position: relative; overflow: hidden; }
+    .env-slider-fill { height: 100%; background: #2563EB; border-radius: 3px; }
+    .env-slider-thumb {
+      position: absolute; top: 50%; width: 20px; height: 20px; border-radius: 50%;
+      background: #2563EB; border: 2px solid #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,.25);
+      transform: translate(-50%, -50%);
+      cursor: grab; touch-action: none;
+      transition: box-shadow 0.1s;
+    }
+    .env-slider-thumb:active, .env-slider-thumb.dragging { cursor: grabbing; box-shadow: 0 2px 8px rgba(37,99,235,.4); }
+
+    /* 生徒アイコンフレーム */
+    .student-face { position: relative; }
+    .student-face img {
+      width: 44px; height: 44px; border-radius: 8px;
+      object-fit: cover; background: #F3F4F6; display: block;
+      border: none; /* フレームはcanvasで描画 */
+      outline: none;
+    }
+    .student-frame {
+      position: absolute; inset: 0;
+      border-radius: 8px;
+      pointer-events: none;
+    }
+
+    /* 生徒名オートコンプリート */
+    .student-input-wrap { position: relative; margin-bottom: 6px; }
+    .student-input {
+      width: 100%; font-size: 12px; padding: 4px 6px;
+      border: 1px solid #E5E7EB; border-radius: 5px;
+      background: #F9FAFB; font-family: inherit; color: #111827;
+      box-sizing: border-box;
+    }
+    .student-input:focus { outline: none; border-color: #BAE6FD; background: #fff; }
+    .student-suggest {
+      position: absolute; top: 100%; left: 0; right: 0; z-index: 200;
+      background: #fff; border: 1px solid #E5E7EB; border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,.1); max-height: 160px; overflow-y: auto;
+      display: none;
+    }
+    .student-suggest.open { display: block; }
+    .student-suggest-item {
+      padding: 5px 8px; font-size: 12px; cursor: pointer; color: #374151;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .student-suggest-item:hover { background: #EFF6FF; }
+    .student-suggest-item img { width: 24px; height: 24px; border-radius: 4px; object-fit: cover; background: #F3F4F6; }
+
+    /* 手持ち・育成状況 */
+    .roster-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+    .roster-icon {
+      position: relative; width: 44px; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+    }
+    .roster-icon img {
+      width: 44px; height: 44px; border-radius: 8px; object-fit: cover;
+      background: #F3F4F6; border: 1px solid #E5E7EB;
+      transition: filter 0.15s;
+    }
+    .roster-icon.unowned img { filter: grayscale(100%) brightness(0.7); }
+    .roster-icon-name { font-size: 8px; color: #6B7280; text-align: center; max-width: 44px; line-height: 1.2; }
+    /* おすすめ生徒ポップアップ: モノクロ表示用 */
+    .student-face.greyed img { filter: grayscale(100%) brightness(0.7); }
+
+    .sheet-load-area { background:#fff; border:1px solid #E5E7EB; border-radius:10px; padding:16px; margin-bottom:14px; }
+    .sheet-url-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+    .sheet-url-input { flex:1; font-size:12px; padding:6px 10px; border:1px solid #E5E7EB; border-radius:6px; font-family:inherit; color:#111827; }
+    .btn-sheet { padding:6px 14px; border-radius:6px; border:none; cursor:pointer; font-size:12px; font-family:inherit; font-weight:600; background:#059669; color:#fff; white-space:nowrap; }
+    .btn-sheet:hover { background:#047857; }
+    .btn-sheet:disabled { background:#9CA3AF; cursor:not-allowed; }
+    .sheet-status { font-size:11px; margin-top:6px; min-height:16px; }
+    .sheet-status.ok  { color:#059669; }
+    .sheet-status.err { color:#B91C1C; }
+    .sheet-status.loading { color:#2563EB; }
+    .sheet-chip { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:4px; background:#EFF6FF; border:1px solid #BFDBFE; color:#1E40AF; font-size:11px; margin:2px; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+    <h1 style="margin-bottom:0;">⚔️ 戦術対抗戦 編成アドバイザー</h1>
+    
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('advisor')">編成アドバイス</button>
+    <button class="tab-btn"        onclick="switchTab('rules')">射程ルールメモ</button>
+    <button class="tab-btn"        onclick="switchTab('matrix')">相性表</button>
+    <button class="tab-btn"        onclick="switchTab('season')">シーズン環境設定</button>
+    <button class="tab-btn"        onclick="switchTab('appsettings')">設定</button>
+  </div>
+
+  <!-- 編成アドバイス -->
+  <div id="tab-advisor" class="tab-pane active">
+
+    <div class="d-panel">
+      <div class="d-panel-header">
+        <div class="d-panel-head">D1　防衛側</div>
+        <div class="d-panel-head">D2　防衛側</div>
+        <div class="d-panel-head">D3　防衛側</div>
+        <div class="d-panel-head">D4　防衛側</div>
+      </div>
+      <div class="d-panel-body" id="d-panel-body"></div>
+    </div>
+    <div id="result-area"></div>
+  </div>
+
+  <!-- 射程ルールメモ -->
+  <div id="tab-rules" class="tab-pane">
+    <div class="rule-form">
+      <div class="rule-form-title">新規ルールを追加</div>
+      <div class="rule-name-row">
+        <input class="rule-name-input" id="rule-name-input" type="text" placeholder="ルール名（例：標準編成A）">
+        <button class="btn-primary" onclick="saveRule()">保存</button>
+        <span id="save-msg" class="save-msg" style="display:none">保存しました</span>
+        <span id="save-err" class="save-err" style="display:none"></span>
+      </div>
+      <div class="rule-slots-grid">
+        <div>
+          <div class="rule-col-title a">攻撃側 A　射程・ターゲット</div>
+          <div id="rule-a-slots"></div>
+        </div>
+        <div>
+          <div class="rule-col-title d">防衛側 D　射程・ターゲット</div>
+          <div id="rule-d-slots"></div>
+        </div>
+      </div>
+    </div>
+    <div class="section-label">保存済みルール（<span id="rule-count">0</span> 件）</div>
+    <div class="saved-rules-wrap" id="saved-rules"></div>
+  </div>
+
+  <!-- 相性表 -->
+  <div id="tab-matrix" class="tab-pane">
+    <div class="matrix-wrap"><table class="mtx" id="mtx"></table></div>
+  </div>
+  <!-- 設定タブ -->
+  <div id="tab-appsettings" class="tab-pane">
+    <div id="appsettings-content"></div>
+  </div>
+
+  <!-- シーズン環境設定 -->
+  <div id="tab-season" class="tab-pane">
+    <div id="season-content"></div>
+  </div>
+
+</div>
+
+<script>
+const ATK_ALL = ['爆発','貫通','分解','神秘','振動'];
+const DEF_ALL = ['軽装備','重装甲','複合装甲','特殊装甲','弾力装甲'];
+const SLOTS   = [1,2,3,4];
+const RANGES  = ['350','350🛡','450','450🛡','550','550🛡','650','650🛡','750','750🛡','850','850🛡','ツルギ','アカネ','シュン属','ドヒナ属'];
+const SPECIAL_ONLY = new Set(['ツルギ','アカネ']); // これのみなら属性非表示
+const SHIELD_SUFFIX = '🛡';
+
+/* ===== 生徒データ ===== */
+const STUDENTS = [{"name": "アイリ（バンド）", "range": "550🛡", "atk": "爆発", "def": "特殊装甲"}, {"name": "アオバ", "range": "350", "atk": "振動", "def": "軽装備"}, {"name": "アカリ", "range": "650🛡", "atk": "爆発", "def": "重装甲"}, {"name": "アコ（ドレス）", "range": "550🛡", "atk": "爆発", "def": "特殊装甲"}, {"name": "アズサ", "range": "650🛡", "atk": "爆発", "def": "重装甲"}, {"name": "アズサ（水着）", "range": "650🛡", "atk": "神秘", "def": "軽装備"}, {"name": "アスナ", "range": "650🛡", "atk": "神秘", "def": "軽装備"}, {"name": "アスナ（バニーガール）", "range": "650🛡", "atk": "神秘", "def": "軽装備"}, {"name": "アスナ（制服）", "range": "650🛡", "atk": "爆発", "def": "重装甲"}, {"name": "アツコ", "range": "350🛡", "atk": "爆発", "def": "特殊装甲"}, {"name": "アリス", "range": "850", "atk": "神秘", "def": "特殊装甲"}, {"name": "アリス（メイド）", "range": "850", "atk": "神秘", "def": "軽装備"}, {"name": "アリス（臨戦）", "range": "650", "atk": "神秘", "def": "複合装甲"}, {"name": "アル", "range": "750🛡", "atk": "爆発", "def": "軽装備"}, {"name": "アル（ドレス）", "range": "750🛡", "atk": "貫通", "def": "重装甲"}, {"name": "アル（正月）", "range": "750🛡", "atk": "貫通", "def": "特殊装甲"}, {"name": "イオリ", "range": "650🛡", "atk": "貫通", "def": "重装甲"}, {"name": "イオリ（水着）", "range": "750🛡", "atk": "爆発", "def": "特殊装甲"}, {"name": "イズナ", "range": "450🛡", "atk": "神秘", "def": "軽装備"}, {"name": "イズナ（水着）", "range": "450🛡", "atk": "神秘", "def": "特殊装甲"}, {"name": "イズミ", "range": "750", "atk": "爆発", "def": "軽装備"}, {"name": "イズミ（水着）", "range": "750", "atk": "爆発", "def": "軽装備"}, {"name": "イチカ", "range": "650🛡", "atk": "振動", "def": "重装甲"}, {"name": "イブキ", "range": "650🛡", "atk": "神秘", "def": "重装甲"}, {"name": "ウイ", "range": "750🛡", "atk": "爆発", "def": "軽装備"}, {"name": "ウイ（水着）", "range": "750🛡", "atk": "貫通", "def": "弾力装甲"}, {"name": "ウタハ（応援団）", "range": "450", "atk": "神秘", "def": "特殊装甲"}, {"name": "ウミカ", "range": "650🛡", "atk": "神秘", "def": "特殊装甲"}, {"name": "エイミ", "range": "350", "atk": "爆発", "def": "軽装備"}, {"name": "エイミ（臨戦）", "range": "750", "atk": "爆発", "def": "軽装備"}, {"name": "エリ", "range": "750🛡", "atk": "振動", "def": "特殊装甲"}, {"name": "オトギ", "range": "750🛡", "atk": "爆発", "def": "特殊装甲"}, {"name": "カズサ", "range": "750", "atk": "貫通", "def": "重装甲"}, {"name": "カズサ（バンド）", "range": "750", "atk": "爆発", "def": "特殊装甲"}, {"name": "カスミ", "range": "550🛡", "atk": "振動", "def": "重装甲"}, {"name": "カノエ", "range": "350", "atk": "神秘", "def": "重装甲"}, {"name": "カホ", "range": "650🛡", "atk": "神秘", "def": "重装甲"}, {"name": "カヨコ", "range": "550🛡", "atk": "爆発", "def": "重装甲"}, {"name": "カヨコ（ドレス）", "range": "550🛡", "atk": "貫通", "def": "軽装備"}, {"name": "カヨコ（正月）", "range": "550🛡", "atk": "神秘", "def": "特殊装甲"}, {"name": "カリン（バニーガール）", "range": "750🛡", "atk": "神秘", "def": "重装甲"}, {"name": "カンナ（水着）", "range": "550🛡", "atk": "爆発", "def": "軽装備"}, {"name": "キキョウ", "range": "750🛡", "atk": "振動", "def": "重装甲"}, {"name": "キララ", "range": "650🛡", "atk": "振動", "def": "軽装備"}, {"name": "キリノ", "range": "550🛡", "atk": "爆発", "def": "特殊装甲"}, {"name": "クルミ", "range": "350", "atk": "爆発", "def": "軽装備"}, {"name": "ケイ", "range": "850", "atk": "神秘", "def": "複合装甲"}, {"name": "ココナ", "range": "650🛡", "atk": "貫通", "def": "特殊装甲"}, {"name": "コタマ（キャンプ）", "range": "550🛡", "atk": "貫通", "def": "重装甲"}, {"name": "コトリ", "range": "750", "atk": "貫通", "def": "軽装備"}, {"name": "コトリ（応援団）", "range": "750", "atk": "爆発", "def": "特殊装甲"}, {"name": "コノカ", "range": "350", "atk": "神秘", "def": "軽装備"}, {"name": "コハル", "range": "750🛡", "atk": "爆発", "def": "重装甲"}, {"name": "コハル（水着）", "range": "750🛡", "atk": "神秘", "def": "重装甲"}, {"name": "コユキ", "range": "750", "atk": "神秘", "def": "重装甲"}, {"name": "サオリ", "range": "650🛡", "atk": "爆発", "def": "特殊装甲"}, {"name": "サオリ（ドレス）", "range": "650", "atk": "振動", "def": "軽装備"}, {"name": "サオリ（水着）", "range": "650🛡", "atk": "神秘", "def": "重装甲"}, {"name": "サキ（水着）", "range": "750", "atk": "爆発", "def": "重装甲"}, {"name": "サクラコ", "range": "650🛡", "atk": "神秘", "def": "特殊装甲"}, {"name": "サクラコ（アイドル）", "range": "650🛡", "atk": "爆発", "def": "重装甲"}, {"name": "シグレ", "range": "650🛡", "atk": "爆発", "def": "重装甲"}, {"name": "ジュリ（アルバイト）", "range": "350", "atk": "神秘", "def": "軽装備"}, {"name": "シュン（幼女）", "range": "750🛡", "atk": "爆発", "def": "軽装備"}, {"name": "ジュンコ", "range": "650🛡", "atk": "貫通", "def": "軽装備"}, {"name": "ジュンコ（正月）", "range": "650🛡", "atk": "神秘", "def": "重装甲"}, {"name": "シロコ", "range": "650🛡", "atk": "爆発", "def": "軽装備"}, {"name": "シロコ（ライディング）", "range": "650🛡", "atk": "神秘", "def": "重装甲"}, {"name": "シロコ＊テラー", "range": "650", "atk": "神秘", "def": "特殊装甲"}, {"name": "スズミ", "range": "650🛡", "atk": "爆発", "def": "重装甲"}, {"name": "スズミ（マジカル）", "range": "650🛡", "atk": "振動", "def": "特殊装甲"}, {"name": "スバル", "range": "650🛡", "atk": "神秘", "def": "特殊装甲"}, {"name": "スミレ", "range": "450", "atk": "貫通", "def": "特殊装甲"}, {"name": "セイア", "range": "550🛡", "atk": "貫通", "def": "弾力装甲"}, {"name": "セイア（水着）", "range": "550🛡", "atk": "貫通", "def": "特殊装甲"}, {"name": "セナ（私服）", "range": "650🛡", "atk": "振動", "def": "重装甲"}, {"name": "セリカ", "range": "650🛡", "atk": "爆発", "def": "軽装備"}, {"name": "セリナ（クリスマス）", "range": "650🛡", "atk": "貫通", "def": "特殊装甲"}, {"name": "タカネ", "range": "550🛡", "atk": "神秘", "def": "軽装備"}, {"name": "チアキ", "range": "650🛡", "atk": "振動", "def": "特殊装甲"}, {"name": "チェリノ", "range": "550🛡", "atk": "貫通", "def": "軽装備"}, {"name": "チセ", "range": "650🛡", "atk": "神秘", "def": "重装甲"}, {"name": "チセ（水着）", "range": "650🛡", "atk": "神秘", "def": "軽装備"}, {"name": "チナツ（温泉）", "range": "650🛡", "atk": "神秘", "def": "軽装備"}, {"name": "ツクヨ", "range": "350🛡", "atk": "神秘", "def": "軽装備"}, {"name": "ツバキ", "range": "350", "atk": "貫通", "def": "特殊装甲"}, {"name": "ツルギ（水着）", "range": "450", "atk": "神秘", "def": "特殊装甲"}, {"name": "トキ", "range": "650", "atk": "爆発", "def": "弾力装甲"}, {"name": "トキ（バニーガール）", "range": "650🛡", "atk": "爆発", "def": "軽装備"}, {"name": "トキ（臨戦）", "range": "550🛡", "atk": "貫通", "def": "軽装備"}, {"name": "トモエ", "range": "750🛡", "atk": "貫通", "def": "特殊装甲"}, {"name": "ナグサ", "range": "750", "atk": "振動", "def": "弾力装甲"}, {"name": "ナツ", "range": "350", "atk": "神秘", "def": "重装甲"}, {"name": "ナツ（バンド）", "range": "550🛡", "atk": "爆発", "def": "特殊装甲"}, {"name": "ニコ", "range": "650", "atk": "爆発", "def": "弾力装甲"}, {"name": "ネル", "range": "450🛡", "atk": "貫通", "def": "軽装備"}, {"name": "ネル（バニーガール）", "range": "450🛡", "atk": "爆発", "def": "重装甲"}, {"name": "ネル（制服）", "range": "550🛡", "atk": "貫通", "def": "弾力装甲"}, {"name": "ノア", "range": "550🛡", "atk": "神秘", "def": "特殊装甲"}, {"name": "ノア（パジャマ）", "range": "550🛡", "atk": "貫通", "def": "軽装備"}, {"name": "ノゾミ", "range": "550🛡", "atk": "振動", "def": "軽装備"}, {"name": "ノノミ", "range": "750", "atk": "貫通", "def": "軽装備"}, {"name": "ノノミ（水着）", "range": "750", "atk": "爆発", "def": "特殊装甲"}, {"name": "ハスミ", "range": "750🛡", "atk": "貫通", "def": "重装甲"}, {"name": "ハスミ（水着）", "range": "750🛡", "atk": "貫通", "def": "軽装備"}, {"name": "ハスミ（体操服）", "range": "850🛡", "atk": "神秘", "def": "特殊装甲"}, {"name": "ハナコ（水着）", "range": "650🛡", "atk": "振動", "def": "重装甲"}, {"name": "ハルカ", "range": "350", "atk": "爆発", "def": "軽装備"}, {"name": "ハルナ", "range": "750🛡", "atk": "神秘", "def": "重装甲"}, {"name": "ハルナ（正月）", "range": "750🛡", "atk": "爆発", "def": "軽装備"}, {"name": "ハレ（キャンプ）", "range": "650🛡", "atk": "爆発", "def": "軽装備"}, {"name": "ヒカリ", "range": "550🛡", "atk": "振動", "def": "軽装備"}, {"name": "ヒナ", "range": "750", "atk": "爆発", "def": "重装甲"}, {"name": "ヒナ（水着）", "range": "750", "atk": "爆発", "def": "重装甲"}, {"name": "ヒナタ", "range": "650🛡", "atk": "神秘", "def": "重装甲"}, {"name": "ヒビキ（応援団）", "range": "850", "atk": "爆発", "def": "軽装備"}, {"name": "ヒフミ", "range": "650🛡", "atk": "貫通", "def": "軽装備"}, {"name": "ヒヨリ（水着）", "range": "750🛡", "atk": "貫通", "def": "重装甲"}, {"name": "フィーナ", "range": "750", "atk": "貫通", "def": "軽装備"}, {"name": "フブキ", "range": "750🛡", "atk": "貫通", "def": "重装甲"}, {"name": "フユ", "range": "550🛡", "atk": "振動", "def": "特殊装甲"}, {"name": "ホシノ", "range": "350", "atk": "貫通", "def": "重装甲"}, {"name": "ホシノ（攻撃）", "range": "650", "atk": "神秘", "def": "重装甲"}, {"name": "ホシノ（水着）", "range": "450", "atk": "爆発", "def": "特殊装甲"}, {"name": "ホシノ（防御）", "range": "350", "atk": "神秘", "def": "重装甲"}, {"name": "マキ", "range": "750", "atk": "貫通", "def": "軽装備"}, {"name": "マリー（アイドル）", "range": "550🛡", "atk": "爆発", "def": "重装甲"}, {"name": "マリー（体操服）", "range": "550🛡", "atk": "神秘", "def": "特殊装甲"}, {"name": "マリナ", "range": "350🛡", "atk": "貫通", "def": "軽装備"}, {"name": "マリナ（チーパオ）", "range": "550🛡", "atk": "貫通", "def": "重装甲"}, {"name": "ミカ", "range": "450🛡", "atk": "貫通", "def": "軽装備"}, {"name": "ミカ（水着）", "range": "550🛡", "atk": "振動", "def": "特殊装甲"}, {"name": "ミサキ", "range": "850🛡", "atk": "爆発", "def": "特殊装甲"}, {"name": "ミチル", "range": "450", "atk": "神秘", "def": "軽装備"}, {"name": "ミドリ", "range": "750🛡", "atk": "貫通", "def": "軽装備"}, {"name": "ミドリ（メイド）", "range": "750🛡", "atk": "振動", "def": "軽装備"}, {"name": "ミナ", "range": "550🛡", "atk": "爆発", "def": "重装甲"}, {"name": "ミネ", "range": "350", "atk": "爆発", "def": "軽装備"}, {"name": "ミネ（アイドル）", "range": "350", "atk": "爆発", "def": "重装甲"}, {"name": "ミモリ", "range": "550🛡", "atk": "神秘", "def": "軽装備"}, {"name": "ミヤコ", "range": "350🛡", "atk": "貫通", "def": "重装甲"}, {"name": "ミヤコ（水着）", "range": "350🛡", "atk": "爆発", "def": "重装甲"}, {"name": "ミユ", "range": "750🛡", "atk": "貫通", "def": "軽装備"}, {"name": "ミヨ", "range": "750🛡", "atk": "振動", "def": "弾力装甲"}, {"name": "ムツキ", "range": "750", "atk": "爆発", "def": "軽装備"}, {"name": "ムツキ（正月）", "range": "750", "atk": "神秘", "def": "重装甲"}, {"name": "メグ", "range": "450", "atk": "爆発", "def": "特殊装甲"}, {"name": "メル", "range": "550🛡", "atk": "貫通", "def": "軽装備"}, {"name": "モエ（水着）", "range": "550🛡", "atk": "振動", "def": "特殊装甲"}, {"name": "モミジ", "range": "850🛡", "atk": "振動", "def": "重装甲"}, {"name": "モモイ", "range": "650🛡", "atk": "貫通", "def": "軽装備"}, {"name": "モモイ（メイド）", "range": "650🛡", "atk": "振動", "def": "軽装備"}, {"name": "ユウカ", "range": "350🛡", "atk": "爆発", "def": "重装甲"}, {"name": "ユウカ（パジャマ）", "range": "450🛡", "atk": "爆発", "def": "重装甲"}, {"name": "ユウカ（体操服）", "range": "450🛡", "atk": "神秘", "def": "特殊装甲"}, {"name": "ユカリ", "range": "750", "atk": "振動", "def": "重装甲"}, {"name": "ユカリ（水着）", "range": "750🛡", "atk": "貫通", "def": "軽装備"}, {"name": "ユズ", "range": "650🛡", "atk": "貫通", "def": "特殊装甲"}, {"name": "ヨシミ（バンド）", "range": "650🛡", "atk": "爆発", "def": "特殊装甲"}, {"name": "ラブ", "range": "450", "atk": "振動", "def": "特殊装甲"}, {"name": "リオ（臨戦）", "range": "550🛡", "atk": "爆発", "def": "特殊装甲"}, {"name": "ルミ", "range": "550🛡", "atk": "爆発", "def": "重装甲"}, {"name": "レイ", "range": "850🛡", "atk": "振動", "def": "軽装備"}, {"name": "レイサ", "range": "350", "atk": "貫通", "def": "重装甲"}, {"name": "レイジョ", "range": "650🛡", "atk": "神秘", "def": "重装甲"}, {"name": "レナ", "range": "550🛡", "atk": "爆発", "def": "軽装備"}, {"name": "レンゲ", "range": "750🛡", "atk": "振動", "def": "重装甲"}, {"name": "ワカモ", "range": "750🛡", "atk": "神秘", "def": "軽装備"}, {"name": "ワカモ（水着）", "range": "750🛡", "atk": "貫通", "def": "重装甲"}, {"name": "御坂美琴", "range": "650🛡", "atk": "貫通", "def": "重装甲"}, {"name": "食蜂操祈", "range": "550🛡", "atk": "爆発", "def": "重装甲"}, {"name": "ハルカ（ドレス）", "range": "450", "atk": "爆発", "def": "軽装備"}, {"name": "ナグサ（水着）", "range": "750", "atk": "爆発", "def": "重装甲"}, {"name": "キサキ（水着）", "range": "550🛡", "atk": "振動", "def": "弾力装甲"}, {"name": "シュン（水着）", "range": "750🛡", "atk": "振動", "def": "軽装備"}, {"name": "サツキ（水着）", "range": "550🛡", "atk": "振動", "def": "弾力装甲"}, {"name": "イロハ（水着）", "range": "650🛡", "atk": "爆発", "def": "特殊装甲"}, {"name": "アカネ", "range": "アカネ", "atk": "貫通", "def": "軽装備"}, {"name": "シュン", "range": "シュン属", "atk": "爆発", "def": "軽装備"}, {"name": "ツルギ", "range": "ツルギ", "atk": "貫通", "def": "重装甲"}, {"name": "ヒナ（ドレス）", "range": "ドヒナ属", "atk": "爆発", "def": "弾力装甲"}, {"name": "レンゲ（水着）", "range": "ドヒナ属", "atk": "振動", "def": "特殊装甲"}, {"name": "シュエリン（水着）", "range": "シュン属", "atk": "振動", "def": "軽装備"}, {"name": "マコト（水着）", "range": "ドヒナ属", "atk": "神秘", "def": "重装甲"}, {"name": "ココロ", "range": "650", "atk": "神秘", "def": "特殊装甲"}, {"name": "コトネ", "range": "350🛡", "atk": "爆発", "def": "特殊装甲"}];
+
+// ---- 射程 → 数値変換 ----
+const RANGE_NUM = {
+  '350':1, '350🛡':1, '450':2, '450🛡':2, '550':3, '550🛡':3,
+  '650':4, '650🛡':4, '750':5, '750🛡':5, '850':6, '850🛡':6,
+  'ツルギ':0, 'アカネ':0, 'シュン属':0, 'ドヒナ属':0
+};
+// 射程数値 → W（攻撃重み）: 350→0.2, 850→0.8
+function rangeToW(rangeStr) {
+  const n = RANGE_NUM[rangeStr] ?? 3;
+  if (n === 0) return 0.5; // 特殊射程は中立
+  // n: 1(350)〜6(850) → 0.2〜0.8 線形補間
+  return 0.2 + (n - 1) / 5 * 0.6;
+}
+
+// ---- 遮蔽設定（スロットごとに射程グループ別でON/OFF） ----
+// shieldCfg[slotN][rangeGroup] = true(遮蔽必須) / false(遮蔽不問)
+// rangeGroup: '350','450','550','650','750','850','特殊'
+let shieldCfg = {};
+try { shieldCfg = JSON.parse(localStorage.getItem('pvp_shield')||'{}'); } catch(e){}
+function getShieldRequired(slotN, rangeBase) {
+  return !!(shieldCfg[slotN] && shieldCfg[slotN][rangeBase]);
+}
+function setShieldRequired(slotN, rangeBase, val) {
+  if (!shieldCfg[slotN]) shieldCfg[slotN] = {};
+  shieldCfg[slotN][rangeBase] = val;
+  try { localStorage.setItem('pvp_shield', JSON.stringify(shieldCfg)); } catch(e){}
+}
+
+// ---- 重み付き幾何平均スコア計算 ----
+// dAtk: 対面Dの攻撃属性, dDef: 対面Dの防御属性
+// isTarget: このAスロットが直接攻撃対象として指定されているか
+function calcStudentScore(student, dAtk, dDef, isTarget) {
+  const W = isTarget ? 0.15 : rangeToW(student.range);
+  const atkScore = dDef ? (DMG[student.atk]?.[dDef] ?? 1.0) : 1.0;
+  const defRaw   = dAtk ? (DMG[dAtk]?.[student.def] ?? 1.0) : 1.0;
+  const defScore = 1 / defRaw;
+  return Math.pow(atkScore, W) * Math.pow(defScore, 1 - W);
+}
+
+// ---- 射程フィルタ＋一致度判定 ----
+// 戻り値: 'full'（完全一致）| 'partial'（数値一致・🛡違い・OFF時のみ）| false（除外）
+// 遮蔽重要ON : 🛡不一致 → false（除外）
+// 遮蔽重要OFF: 🛡不一致 → 'partial'（ペナルティ付きで残す）
+// 特殊射程（ツルギ等）: 完全一致のみ
+function rangeMatchResult(student, rangeList, slotN) {
+  if (!rangeList || rangeList.length === 0) return false;
+  const sRange     = student.range;
+  const sBase      = sRange.replace('🛡','');
+  const sHasShield = sRange.includes('🛡');
+
+  // 特殊射程は完全一致のみ
+  if (['ツルギ','アカネ','シュン属','ドヒナ属'].includes(sRange))
+    return rangeList.includes(sRange) ? 'full' : false;
+
+  let bestMatch = false;
+  for (const rec of rangeList) {
+    const rBase = rec.replace('🛡','');
+    if (rBase !== sBase) continue;
+
+    if (sHasShield === rec.includes('🛡')) {
+      bestMatch = 'full';
+      break; // 完全一致が見つかればそれ以上探さない
+    } else {
+      // 🛡不一致
+      const shieldImportant = getShieldRequired(slotN, rBase);
+      if (shieldImportant) return false; // ON → 除外
+      bestMatch = 'partial';             // OFF → ペナルティ付き
+    }
+  }
+  return bestMatch;
+}
+
+// ---- 推奨生徒取得 ----
+// rule: 照合中のルールオブジェクト, sn: Aスロット番号
+function getRecommendedStudents(rangeList, rule, sn) {
+  const allMatched = [];
+  for (const s of STUDENTS) {
+    const match = rangeMatchResult(s, rangeList, sn);
+    if (!match) continue;
+    let score = calcStudentScore(s, rule, sn);
+    const shieldPartial = (match === 'partial');
+    if (shieldPartial) score *= envCfg.shield_penalty;
+    allMatched.push({ ...s, score, shieldPartial, owned: isOwned(s.name) });
+  }
+  allMatched.sort((a, b) => b.score - a.score);
+
+  const owned   = allMatched.filter(s => s.owned);
+  const unowned = allMatched.filter(s => !s.owned);
+
+  if (owned.length > 0) {
+    // 育成済み生徒を表示（最大10件）
+    return owned.slice(0, 10).map(s => ({ ...s, forceGrey: false }));
+  } else if (unowned.length > 0) {
+    // 全員未育成: モノクロで表示
+    return unowned.slice(0, 10).map(s => ({ ...s, forceGrey: true }));
+  }
+  return [];
+}
+
+/* ===== 設定 ===== */
+const DEFAULT_SETTINGS = { showAttrPanel: true, showDmg: true };
+let cfg = {...DEFAULT_SETTINGS};
+try {
+  const saved = JSON.parse(localStorage.getItem('pvp_cfg')||'{}');
+  cfg = {...DEFAULT_SETTINGS, ...saved};
+} catch(e){}
+
+const RANGE_BASES = ['350','450','550','650','750','850'];
+
+function onShieldCfg(slotN, rangeBase, val){
+  setShieldRequired(slotN, rangeBase, val);
+  const id = `sc-${slotN}-${rangeBase}`;
+  const lbl = document.getElementById('lbl-'+id);
+  if(lbl){
+    lbl.style.background = val ? '#EDE9FE' : '#F9FAFB';
+    lbl.style.color = val ? '#5B21B6' : '#374151';
+  }
+  renderResults();
+}
+
+// 設定はタブで管理
+function applySetting(key, val){
+  cfg[key] = val;
+  try{ localStorage.setItem('pvp_cfg', JSON.stringify(cfg)); }catch(e){}
+  renderResults();
+}
+
+const DMG = {
+  爆発:{軽装備:2,重装甲:1,複合装甲:1,特殊装甲:0.5,弾力装甲:0.5},
+  貫通:{軽装備:0.5,重装甲:2,複合装甲:1,特殊装甲:1,弾力装甲:1},
+  分解:{軽装備:0.5,重装甲:1.5,複合装甲:2,特殊装甲:1,弾力装甲:1},
+  神秘:{軽装備:1,重装甲:0.5,複合装甲:0.5,特殊装甲:2,弾力装甲:1},
+  振動:{軽装備:1,重装甲:0.5,複合装甲:0.5,特殊装甲:1.5,弾力装甲:2},
+};
+
+const adv = Object.fromEntries(SLOTS.map(n=>[n,{atk:'',def:'',range:'',studentName:''}]));
+let excludeGreen = false;
+let rules = [];
+try { rules = JSON.parse(localStorage.getItem('pvp_rules')||'[]'); } catch(e){}
+
+const chip      = name => `<span class="chip chip-${name}">${name}</span>`;
+const rangeChip = r    => `<span class="chip chip-range">${r}</span>`;
+const escHtml   = s    => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const neighbors = n    => SLOTS.filter(s=>Math.abs(s-n)===1);
+const activeATK = ()   => excludeGreen ? ATK_ALL.filter(a=>a!=='分解') : ATK_ALL;
+const activeDEF = ()   => excludeGreen ? DEF_ALL.filter(d=>d!=='複合装甲') : DEF_ALL;
+
+function atkTag(v){
+  if(v===null||!cfg.showDmg) return '';
+  const c=v>=2?'atk-2':v>=1.5?'atk-15':v>=1?'atk-1':'atk-05';
+  return `<span class="mt ${c}">×${v}</span>`;
+}
+function defTag(v){
+  if(v===null||!cfg.showDmg) return '';
+  const c=v<=0.5?'def-05':v<=1?'def-1':'def-hi';
+  return `<span class="mt ${c}">×${v}</span>`;
+}
+function dmgLabel(prefix){ return cfg.showDmg ? prefix : ''; }
+
+/* ターゲット選択肢生成：自分以外のスロット */
+function targetOptions(side, n, savedVal=''){
+  const oppSide = side==='a' ? 'd' : 'a';
+  const oppLabel = oppSide.toUpperCase();
+  return `<option value="">-</option>`
+    + SLOTS.map(sn=>{
+        const v=`${oppSide}${sn}`;
+        return `<option value="${v}"${v===savedVal?' selected':''}>${oppLabel}${sn}</option>`;
+      }).join('');
+}
+
+/* ===== 属性スコア計算（編成アドバイス・対面ベース） ===== */
+function computeCombos(n){
+  const dAtk=adv[n].atk, dDef=adv[n].def;
+  if(!dAtk&&!dDef) return null;
+  const nbDefs=neighbors(n).map(s=>adv[s].def).filter(Boolean);
+  const nbAtks=neighbors(n).map(s=>adv[s].atk).filter(Boolean);
+  const combos=[];
+  for(const aAtk of activeATK()) for(const aDef of activeDEF()){
+    const atkScore=dDef?DMG[aAtk][dDef]:null;
+    const defRaw  =dAtk?DMG[dAtk][aDef]:null;
+    const defScore=defRaw!==null?2-defRaw:null;
+    const primary =(atkScore??0)+(defScore??0);
+    const nbAt=nbDefs.length?nbDefs.reduce((s,d)=>s+DMG[aAtk][d],0)/nbDefs.length:0;
+    const nbDt=nbAtks.length?nbAtks.reduce((s,a)=>s+(2-DMG[a][aDef]),0)/nbAtks.length:0;
+    combos.push({aAtk,aDef,atkScore,defRaw,defScore,primary,tie:nbAt+nbDt});
+  }
+  combos.sort((a,b)=>{
+    if(b.primary!==a.primary) return b.primary-a.primary;
+    const ad=a.defScore??0,bd=b.defScore??0;
+    if(bd!==ad) return bd-ad;
+    return b.tie-a.tie;
+  });
+  return combos.slice(0,2);
+}
+
+/* ===== ルール内ターゲットを使った属性推奨 ===== */
+// 戻り値: { combos, isFallback } | null
+function computeRuleAttrCombos(rule, sn){
+  const tgt = (rule.targetA && rule.targetA[sn]) || '';
+
+  // ターゲット設定あり → ターゲットDスロットの属性を参照
+  if(tgt){
+    const tgtNum = parseInt(tgt[1]);
+    const dAtk = adv[tgtNum] ? adv[tgtNum].atk : '';
+    const dDef  = adv[tgtNum] ? adv[tgtNum].def  : '';
+    if(!dAtk && !dDef) return null;
+    const combos=[];
+    for(const aAtk of activeATK()) for(const aDef of activeDEF()){
+      const atkScore=dDef?DMG[aAtk][dDef]:null;
+      const defRaw  =dAtk?DMG[dAtk][aDef]:null;
+      const defScore=defRaw!==null?2-defRaw:null;
+      const primary=(atkScore??0)+(defScore??0);
+      combos.push({aAtk,aDef,atkScore,defRaw,defScore,primary,tie:0});
+    }
+    combos.sort((a,b)=>{
+      if(b.primary!==a.primary) return b.primary-a.primary;
+      const ad=a.defScore??0,bd=b.defScore??0;
+      if(bd!==ad) return bd-ad;
+      return b.tie-a.tie;
+    });
+    return { combos: combos.slice(0,2), isFallback: false };
+  }
+
+  // ターゲット未設定 → 対面（同番号）＋隣接タイブレークでフォールバック
+  const dAtk=adv[sn].atk, dDef=adv[sn].def;
+  if(!dAtk && !dDef) return null;
+  const nbDefs=neighbors(sn).map(s=>adv[s].def).filter(Boolean);
+  const nbAtks=neighbors(sn).map(s=>adv[s].atk).filter(Boolean);
+  const combos=[];
+  for(const aAtk of activeATK()) for(const aDef of activeDEF()){
+    const atkScore=dDef?DMG[aAtk][dDef]:null;
+    const defRaw  =dAtk?DMG[dAtk][aDef]:null;
+    const defScore=defRaw!==null?2-defRaw:null;
+    const primary=(atkScore??0)+(defScore??0);
+    const nbAt=nbDefs.length?nbDefs.reduce((s,d)=>s+DMG[aAtk][d],0)/nbDefs.length:0;
+    const nbDt=nbAtks.length?nbAtks.reduce((s,a)=>s+(2-DMG[a][aDef]),0)/nbAtks.length:0;
+    combos.push({aAtk,aDef,atkScore,defRaw,defScore,primary,tie:nbAt+nbDt});
+  }
+  combos.sort((a,b)=>{
+    if(b.primary!==a.primary) return b.primary-a.primary;
+    const ad=a.defScore??0,bd=b.defScore??0;
+    if(bd!==ad) return bd-ad;
+    return b.tie-a.tie;
+  });
+  return { combos: combos.slice(0,2), isFallback: true };
+}
+
+/* 推奨射程がツルギ・アカネのみかどうか判定 */
+function isSpecialOnly(ranges){
+  if(!ranges||!ranges.length) return true;
+  return ranges.every(r=>SPECIAL_ONLY.has(r));
+}
+
+/* コンボ行HTML（横並び） */
+function comboRowHtml(combos){
+  return `<div class="combo-inline-list">${combos.map((c,i)=>{
+    const r=i+1;
+    const scores=[
+      c.atkScore!==null&&cfg.showDmg?`<span class="sc">${dmgLabel('攻')}${atkTag(c.atkScore)}</span>`:'',
+      c.defRaw  !==null&&cfg.showDmg?`<span class="sc">${dmgLabel('被')}${defTag(c.defRaw)}</span>`:'',
+    ].join('');
+    return `<div class="combo-inline ${r===1?'rank-1':''}">
+      <div class="rank-badge ${r===1?'rb-1':'rb-2'}">${r}</div>
+      <div class="combo-names">${chip(c.aAtk)}<span class="combo-x">×</span>${chip(c.aDef)}</div>
+      <div class="combo-scores">${scores}</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+/* ===== 射程マッチング ===== */
+function computeRangeResult(){
+  const entered=SLOTS.filter(n=>adv[n].range!=='');
+  if(!entered.length) return null;
+  return rules.filter(r=>entered.every(n=>r.d[n]&&r.d[n].includes(adv[n].range)));
+}
+
+/* ===== 描画 ===== */
+function renderDPanel(){
+  document.getElementById('d-panel-body').innerHTML = SLOTS.map(n=>{
+    const s=adv[n];
+    const mk=(field,opts,val)=>`<select onchange="onSel(${n},'${field}',this.value)"><option value="">-</option>${opts.map(o=>`<option value="${o}"${o===val?' selected':''}>${o}</option>`).join('')}</select>`;
+    const sName = s.studentName||'';
+    return `<div class="d-slot-col">
+      <div class="student-input-wrap">
+        <input id="si-${n}" class="student-input" type="text"
+          placeholder="生徒名で検索…"
+          value="${sName.replace(/"/g,'&quot;')}"
+          oninput="onStudentInput(${n},this.value)"
+          onblur="onStudentBlur(${n})"
+          autocomplete="off">
+        <div id="sl-${n}" class="student-suggest"></div>
+      </div>
+      <div class="field-row"><span class="field-lbl">射程</span>${mk('range',RANGES,s.range)}</div>
+      <div class="field-row"><span class="field-lbl">攻撃</span>${mk('atk',ATK_ALL,s.atk)}</div>
+      <div class="field-row"><span class="field-lbl">防御</span>${mk('def',DEF_ALL,s.def)}</div>
+      <div class="chip-preview">
+        ${s.range?rangeChip(s.range):''}${s.atk?chip(s.atk):''}${s.def?chip(s.def):''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderResults(){
+  const area=document.getElementById('result-area');
+  const hasAttr=SLOTS.some(n=>adv[n].atk||adv[n].def);
+  const rangeRes=computeRangeResult();
+  let html='';
+
+  /* 属性推奨パネル（対面ベース・既存） */
+  if(hasAttr && cfg.showAttrPanel){
+    const heads=SLOTS.map(n=>`<div class="attr-panel-head">A${n}　推奨（上位2）</div>`).join('');
+    const cols=SLOTS.map(n=>{
+      const combos=computeCombos(n);
+      if(!combos) return `<div class="attr-slot-col"><div class="empty-msg">入力待ち</div></div>`;
+      return `<div class="attr-slot-col">${comboRowHtml(combos)}</div>`;
+    }).join('');
+    html+=`<div class="result-section-label">属性推奨（対面）</div>
+      <div class="attr-panel">
+        <div class="attr-panel-header">${heads}</div>
+        <div class="attr-panel-body">${cols}</div>
+      </div>`;
+  }
+
+  /* 射程ルール照合 */
+  if(rangeRes!==null){
+    html+=`<div class="range-section"><div class="range-section-label">ルール照合</div>`;
+    if(!rangeRes.length){
+      html+=`<div class="range-no-match">ルールが見つかりませんでした</div>`;
+    } else {
+      html+=rangeRes.map(rule=>{
+        const cols=SLOTS.map(sn=>{
+          const aRanges=rule.a[sn]||[];
+          const rangeHtml=`<div class="rule-range-chips">${aRanges.map(r=>rangeChip(r)).join('')}</div>`;
+
+          // 属性推奨：推奨射程がツルギ・アカネのみなら非表示
+          let attrHtml='';
+          let atkRecs=[], defRecs=[];
+          if(!isSpecialOnly(aRanges)){
+            const result=computeRuleAttrCombos(rule,sn);
+            if(result){
+              const {combos,isFallback}=result;
+              const wrapStyle=isFallback?'opacity:0.45;':'';
+              const labelNote=isFallback?' <span style="font-size:9px;color:#9CA3AF;">（対面推定）</span>':'';
+              attrHtml=`<div class="rule-attr-divider"></div>
+                <div class="rule-attr-label">属性推奨${labelNote}</div>
+                <div style="${wrapStyle}">${comboRowHtml(combos)}</div>`;
+              // 推奨属性を収集（生徒スコア計算用）
+              atkRecs = [...new Set(combos.map(c=>c.aAtk))];
+              defRecs = [...new Set(combos.map(c=>c.aDef))];
+            }
+          }
+
+          // おすすめ生徒ボタン
+          const popupId=`popup-${rule.id}-${sn}`;
+          const recStudents=getRecommendedStudents(aRanges, rule, sn);
+          const studentBtnHtml=`
+            <div class="rule-attr-divider"></div>
+            <div class="student-btn-wrap">
+              <button class="student-btn" onclick="togglePopup('${popupId}',event)">おすすめ生徒 ▾</button>
+              <div class="student-popup" id="${popupId}">
+                <div class="student-popup-title">おすすめ生徒（合致度順）</div>
+                ${recStudents.length===0
+                  ? '<div class="no-student">該当生徒なし</div>'
+                  : `<div class="student-faces">${recStudents.map(s=>{
+                      const dotCount = calcDotCount(s, rule, sn);
+          const scoreDots=Array.from({length:4},(_,i)=>`<span class="score-dot ${i<dotCount?'on':'off'}"></span>`).join('');
+                      const atkC = ATK_COLOR[s.atk] || '#9CA3AF';
+                      const defC = DEF_COLOR[s.def] || '#9CA3AF';
+                      const greyClass = s.forceGrey ? 'greyed' : '';
+                      return `<div class="student-face ${greyClass}" data-name="${s.name}">
+                        <img src="students/${s.name}.png" alt="${s.name}"
+                          onerror="this.classList.add('img-err');this.src='data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'44\' height=\'44\'><rect width=\'44\' height=\'44\' fill=\'%23F3F4F6\'><\/rect><\/svg>'"
+                          title="${s.name}">
+                        ${makeFrame(atkC, defC)}
+                        <div class="student-face-name">${s.name}</div>
+                        <div class="student-score-bar">${scoreDots}</div>
+                      </div>`;
+                    }).join('')}</div>`
+                }
+              </div>
+            </div>`;
+
+          return `<div class="rule-set-col">
+            <div class="rule-set-col-head">A${sn}</div>
+            ${rangeHtml}${attrHtml}${studentBtnHtml}
+          </div>`;
+        }).join('');
+        const detailId=`rd-${rule.id}`;
+        return `<div class="rule-set">
+          <div class="rule-set-header" onclick="toggleRuleDetail('${detailId}')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+            <span>${escHtml(rule.name)}</span><span style="font-size:11px;color:#BAE6FD;">▼ 詳細</span>
+          </div>
+          <div id="${detailId}" style="display:none;padding:8px 12px;background:#E0F2FE;border-bottom:1px solid #BAE6FD;font-size:11px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div><div style="font-weight:700;color:#0369A1;margin-bottom:4px;">攻撃側 A</div>${SLOTS.map(sn=>`<div style="display:flex;gap:4px;align-items:center;margin-bottom:3px;"><span style="color:#6B7280;min-width:22px;">A${sn}</span>${(rule.a[sn]||[]).map(r=>rangeChip(r)).join('')}${rule.targetA&&rule.targetA[sn]?`<span style="color:#9CA3AF;">→${rule.targetA[sn].toUpperCase()}</span>`:''}</div>`).join('')}</div>
+              <div><div style="font-weight:700;color:#B91C1C;margin-bottom:4px;">防衛側 D</div>${SLOTS.map(sn=>`<div style="display:flex;gap:4px;align-items:center;margin-bottom:3px;"><span style="color:#6B7280;min-width:22px;">D${sn}</span>${(rule.d[sn]||[]).map(r=>rangeChip(r)).join('')}${rule.targetD&&rule.targetD[sn]?`<span style="color:#9CA3AF;">→${rule.targetD[sn].toUpperCase()}</span>`:''}</div>`).join('')}</div>
+            </div>
+          </div>
+          <div class="rule-set-body">${cols}</div>
+        </div>`;
+      }).join('');
+    }
+    html+=`</div>`;
+  }
+
+  area.innerHTML=html;
+}
+
+function render(){ renderDPanel(); renderResults(); }
+function onSel(n,field,val){
+  adv[n][field]=val;
+  // 手動変更時は生徒名をクリア
+  adv[n].studentName = '';
+  render();
+  // 名前欄も即時クリア
+  const si = document.getElementById('si-'+n);
+  if(si) si.value = '';
+}
+
+function toggleExclude(){
+  excludeGreen=!excludeGreen;
+  document.getElementById('toggle-btn').classList.toggle('off',!excludeGreen);
+  document.getElementById('toggle-label').textContent=
+    excludeGreen?'分解 / 複合装甲 を考慮しない（ON）':'分解 / 複合装甲 を考慮する';
+  renderResults();
+}
+
+/* ===== 射程ルールメモ ===== */
+function cbGroupHtml(prefix,n){
+  return RANGES.map(r=>{
+    const id=`cb-${prefix}${n}-${r.replace(/\s/g,'_')}`;
+    return `<input type="checkbox" class="cb-item" id="${id}" name="${prefix}${n}" value="${r}"><label class="cb-label" for="${id}">${r}</label>`;
+  }).join('');
+}
+
+function slotRowHtml(prefix, n){
+  // ターゲット選択（対面スロットから選ぶ）
+  const tgtHtml=`<div class="target-row">
+    <span class="target-lbl">ターゲット</span>
+    <select class="target-select" id="tgt-${prefix}${n}">
+      ${targetOptions(prefix, n)}
+    </select>
+  </div>`;
+  return `<div class="rule-slot-row">
+    <span class="rule-slot-num">${prefix.toUpperCase()}${n}</span>
+    <div class="rule-slot-inputs">
+      <div class="cb-group">${cbGroupHtml(prefix,n)}</div>
+      ${tgtHtml}
+    </div>
+  </div>`;
+}
+
+function renderRuleForm(){
+  ['a','d'].forEach(p=>{
+    document.getElementById(`rule-${p}-slots`).innerHTML=SLOTS.map(n=>slotRowHtml(p,n)).join('');
+  });
+}
+
+function getChecked(prefix,n){
+  return Array.from(document.querySelectorAll(`input[name="${prefix}${n}"]:checked`)).map(el=>el.value);
+}
+function getTarget(prefix,n){
+  const el=document.getElementById(`tgt-${prefix}${n}`);
+  return el?el.value:'';
+}
+
+function saveRule(){
+  const name=document.getElementById('rule-name-input').value.trim();
+  const errEl=document.getElementById('save-err'),msgEl=document.getElementById('save-msg');
+  errEl.style.display='none'; msgEl.style.display='none';
+  if(!name){ errEl.textContent='ルール名を入力してください'; errEl.style.display='inline'; return; }
+  const d={},a={},targetD={},targetA={};
+  let valid=true;
+  for(const n of SLOTS){
+    d[n]=getChecked('d',n); a[n]=getChecked('a',n);
+    targetD[n]=getTarget('d',n); targetA[n]=getTarget('a',n);
+    if(!d[n].length||!a[n].length) valid=false;
+  }
+  if(!valid){ errEl.textContent='D1〜4・A1〜4 すべてのスロットで1つ以上選択してください'; errEl.style.display='inline'; return; }
+  rules.push({id:Date.now(),name,d,a,targetD,targetA});
+  try{ localStorage.setItem('pvp_rules',JSON.stringify(rules)); }catch(e){}
+  renderSavedRules();
+  document.getElementById('rule-name-input').value='';
+  document.querySelectorAll('.cb-item').forEach(el=>el.checked=false);
+  document.querySelectorAll('.target-select').forEach(el=>el.value='');
+  msgEl.style.display='inline';
+  setTimeout(()=>msgEl.style.display='none',2000);
+  renderResults();
+}
+
+function deleteRule(id){
+  rules=rules.filter(r=>r.id!==id);
+  try{ localStorage.setItem('pvp_rules',JSON.stringify(rules)); }catch(e){}
+  renderSavedRules(); renderResults();
+}
+function toggleRuleBody(id){
+  document.getElementById('rb-'+id).classList.toggle('open');
+  document.getElementById('re-'+id).classList.toggle('open');
+}
+
+function renderSavedRules(){
+  const c=document.getElementById('saved-rules');
+  document.getElementById('rule-count').textContent=rules.length;
+  if(!rules.length){ c.innerHTML='<div class="empty-rules">ルールが登録されていません</div>'; return; }
+  c.innerHTML=rules.map(rule=>`
+    <div class="rule-card" id="card-${rule.id}">
+      <div class="rule-card-header" onclick="toggleRuleBody(${rule.id})">
+        <span class="rule-card-name">${escHtml(rule.name)}${rule.fromSheet ? ' <span style="font-size:10px;font-weight:600;background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;border-radius:3px;padding:1px 5px;vertical-align:middle;">みん辞書より</span>' : ''}</span>
+        <div class="rule-card-right">
+          <button class="btn-edit"   onclick="event.stopPropagation();editRule(${rule.id})">編集</button>
+          <button class="btn-danger" onclick="event.stopPropagation();deleteRule(${rule.id})">削除</button>
+          <span class="rule-expand-btn" id="re-${rule.id}">▼</span>
+        </div>
+      </div>
+      <div class="rule-card-body" id="rb-${rule.id}">
+        <div class="rule-body-grid">
+          <div>
+            <div class="rule-body-col-title">攻撃側 A</div>
+            ${SLOTS.map(n=>`<div class="rule-slot-chips">
+              <span class="rule-slot-lbl">A${n}</span>
+              ${(rule.a[n]||[]).map(r=>rangeChip(r)).join('')}
+              ${rule.targetA&&rule.targetA[n]?`<span style="font-size:10px;color:#9CA3AF;">→${rule.targetA[n].toUpperCase()}</span>`:''}
+            </div>`).join('')}
+          </div>
+          <div>
+            <div class="rule-body-col-title">防衛側 D</div>
+            ${SLOTS.map(n=>`<div class="rule-slot-chips">
+              <span class="rule-slot-lbl">D${n}</span>
+              ${(rule.d[n]||[]).map(r=>rangeChip(r)).join('')}
+              ${rule.targetD&&rule.targetD[n]?`<span style="font-size:10px;color:#9CA3AF;">→${rule.targetD[n].toUpperCase()}</span>`:''}
+            </div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+/* ===== ルール編集 ===== */
+function editRule(id){
+  const rule = rules.find(r=>r.id===id);
+  if(!rule) return;
+
+  // すでに開いていたら閉じる
+  const existingForm = document.getElementById('edit-form-'+id);
+  if(existingForm){ existingForm.remove(); return; }
+
+  // 他の編集フォームを閉じる
+  document.querySelectorAll('[id^="edit-form-"]').forEach(el=>el.remove());
+
+  // カード本体を開く
+  const body = document.getElementById('rb-'+id);
+  if(body && !body.classList.contains('open')) toggleRuleBody(id);
+
+  // 編集フォームを生成
+  const form = document.createElement('div');
+  form.className = 'edit-form';
+  form.id = 'edit-form-'+id;
+
+  // チェックボックスHTML（既存値を反映）
+  function editCbGroup(prefix, n){
+    return RANGES.map(r=>{
+      const eid=`ecb-${id}-${prefix}${n}-${r.replace(/\s/g,'_')}`;
+      const checked = (rule[prefix][n]||[]).includes(r) ? 'checked' : '';
+      return `<input type="checkbox" class="cb-item" id="${eid}" name="ecb-${id}-${prefix}${n}" value="${r}" ${checked}><label class="cb-label" for="${eid}">${r}</label>`;
+    }).join('');
+  }
+  function editTargetSel(prefix, n){
+    const savedVal = (prefix==='a' ? rule.targetA : rule.targetD)?.[n] || '';
+    const oppSide = prefix==='a'?'d':'a';
+    const opts = `<option value="">-</option>`
+      + SLOTS.map(sn=>{const v=`${oppSide}${sn}`;return `<option value="${v}"${v===savedVal?' selected':''}>${oppSide.toUpperCase()}${sn}</option>`;}).join('');
+    return `<select class="target-select" id="etgt-${id}-${prefix}${n}">${opts}</select>`;
+  }
+
+  const slotsHtml = (prefix, label, color) =>
+    `<div><div class="rule-body-col-title" style="color:${color}">${label}</div>
+    ${SLOTS.map(n=>`<div class="rule-slot-row">
+      <span class="rule-slot-num">${prefix.toUpperCase()}${n}</span>
+      <div class="rule-slot-inputs">
+        <div class="cb-group">${editCbGroup(prefix,n)}</div>
+        <div class="target-row"><span class="target-lbl">ターゲット</span>${editTargetSel(prefix,n)}</div>
+      </div>
+    </div>`).join('')}</div>`;
+
+  form.innerHTML = `
+    <div class="edit-form-title">✏️ 編集中：${escHtml(rule.name)}</div>
+    <div class="edit-name-row">
+      <input class="edit-name-input" id="ename-${id}" type="text" value="${escHtml(rule.name)}" placeholder="ルール名">
+      <button class="btn-edit-save"   onclick="updateRule(${id})">保存</button>
+      <button class="btn-edit-cancel" onclick="cancelEdit(${id})">キャンセル</button>
+      <span id="edit-msg-${id}" style="font-size:11px;color:#059669;display:none;">更新しました</span>
+      <span id="edit-err-${id}" style="font-size:11px;color:#B91C1C;display:none;"></span>
+    </div>
+    <div class="rule-slots-grid">
+      ${slotsHtml('a','攻撃側 A　射程・ターゲット','#1E40AF')}
+      ${slotsHtml('d','防衛側 D　射程・ターゲット','#B91C1C')}
+    </div>`;
+
+  body.appendChild(form);
+}
+
+function cancelEdit(id){
+  const form = document.getElementById('edit-form-'+id);
+  if(form) form.remove();
+}
+
+function updateRule(id){
+  const nameEl = document.getElementById('ename-'+id);
+  const msgEl  = document.getElementById('edit-msg-'+id);
+  const errEl  = document.getElementById('edit-err-'+id);
+  errEl.style.display='none'; msgEl.style.display='none';
+
+  const name = nameEl.value.trim();
+  if(!name){ errEl.textContent='ルール名を入力してください'; errEl.style.display='inline'; return; }
+
+  const d={},a={},targetD={},targetA={};
+  let valid=true;
+  for(const n of SLOTS){
+    a[n]=Array.from(document.querySelectorAll(`input[name="ecb-${id}-a${n}"]:checked`)).map(el=>el.value);
+    d[n]=Array.from(document.querySelectorAll(`input[name="ecb-${id}-d${n}"]:checked`)).map(el=>el.value);
+    targetA[n]=(document.getElementById(`etgt-${id}-a${n}`)?.value)||'';
+    targetD[n]=(document.getElementById(`etgt-${id}-d${n}`)?.value)||'';
+    if(!a[n].length||!d[n].length) valid=false;
+  }
+  if(!valid){ errEl.textContent='D1〜4・A1〜4 すべてのスロットで1つ以上選択してください'; errEl.style.display='inline'; return; }
+
+  const idx = rules.findIndex(r=>r.id===id);
+  if(idx===-1) return;
+  rules[idx] = {...rules[idx], name, a, d, targetA, targetD};
+  try{ localStorage.setItem('pvp_rules',JSON.stringify(rules)); }catch(e){}
+
+  msgEl.style.display='inline';
+  setTimeout(()=>{ cancelEdit(id); renderSavedRules(); renderResults(); }, 800);
+}
+
+
+/* ===== シーズン環境設定タブ ===== */
+
+// 環境パラメータのデフォルト値
+const ENV_DEFAULTS = {
+  W_min:         0.20, // 射程最短(350)のときの攻撃重み
+  W_max:         0.80, // 射程最長(850)のときの攻撃重み
+  W_target:      0.15, // 直接攻撃対象のときの攻撃重み
+  W_special:     0.50, // 特殊射程(ツルギ等)のときの攻撃重み
+  shield_penalty: 0.70, // 遮蔽重要ONかつ🛡不一致時のスコア係数（OFF時も同係数で減点）
+};
+let envCfg = {...ENV_DEFAULTS};
+try { const s=JSON.parse(localStorage.getItem('pvp_env')||'{}'); envCfg={...ENV_DEFAULTS,...s}; } catch(e){}
+
+function saveEnvCfg(){
+  try { localStorage.setItem('pvp_env', JSON.stringify(envCfg)); } catch(e){}
+}
+
+// rangeToW を envCfg 参照に更新（上書き）
+function rangeToW(rangeStr) {
+  const n = RANGE_NUM[rangeStr] ?? 3;
+  if (n === 0) return envCfg.W_special;
+  return envCfg.W_min + (n - 1) / 5 * (envCfg.W_max - envCfg.W_min);
+}
+
+// ---- ドット数計算（表示用） ----
+// 幾何平均スコア = atkScore^W × defScore^(1-W)
+// 閾値: dot4≥1.90 / dot3≥1.20 / dot2≥0.85 / dot1≥0.55 / dot0<0.55
+function calcDotCount(student, rule, sn) {
+  const tgtAKey = rule.targetA && rule.targetA[sn];
+  const tgtANum = tgtAKey ? parseInt(tgtAKey[1]) : sn;
+  const isTarget = !!tgtAKey;
+  const W = isTarget ? envCfg.W_target : rangeToW(student.range);
+
+  const tgtDDef  = adv[tgtANum]?.def || '';
+  const atkScore = tgtDDef ? (DMG[student.atk]?.[tgtDDef] ?? 1.0) : 1.0;
+
+  const attackerDNum = findAttackerD(rule, sn) ?? sn;
+  const attackerDAtk = adv[attackerDNum]?.atk || '';
+  const defRaw   = attackerDAtk ? (DMG[attackerDAtk]?.[student.def] ?? 1.0) : 1.0;
+  const defScore = 1 / defRaw;
+
+  // 幾何平均（スコア範囲 0.5〜2.0）
+  const score = Math.pow(atkScore, W) * Math.pow(defScore, 1 - W);
+
+  if      (score >= 1.90) return 4;
+  else if (score >= 1.20) return 3;
+  else if (score >= 0.85) return 2;
+  else if (score >= 0.55) return 1;
+  else                    return 0;
+}
+
+
+const ATK_COLOR = {
+  '爆発':'#EF4444','貫通':'#EAB308','分解':'#22C55E','神秘':'#3B82F6','振動':'#A855F7'
+};
+const DEF_COLOR = {
+  '軽装備':'#EF4444','重装甲':'#EAB308','複合装甲':'#22C55E','特殊装甲':'#3B82F6','弾力装甲':'#A855F7'
+};
+
+function makeFrame(atkColor, defColor) {
+  // SVGで上辺+左辺=atk色、下辺+右辺=def色の角丸四角形フレームを生成
+  const r = 8; // border-radius
+  const s = 44; // size
+  const t = 2.5; // stroke width
+  const h = t / 2;
+  // パスを4辺に分けて描画（上辺+左辺, 下辺+右辺）
+  // 上辺+左辺: 左上から右上へ、さらに右上から右下へは描かない
+  const topLeft = `M ${r+h},${h} L ${s-r-h},${h} Q ${s-h},${h} ${s-h},${r+h} `; // 上辺+右上角
+  const rightBottom = `L ${s-h},${s-r-h} Q ${s-h},${s-h} ${s-r-h},${s-h} L ${r+h},${s-h} Q ${h},${s-h} ${h},${s-r-h} `; // 右辺+下辺+左下角
+  const leftTop = `L ${h},${r+h} Q ${h},${h} ${r+h},${h}`; // 左辺+左上角（閉じ）
+
+  return `<svg class="student-frame" viewBox="0 0 ${s} ${s}" xmlns="http://www.w3.org/2000/svg">
+    <path d="M ${r+h},${h} L ${s-r-h},${h}" stroke="${atkColor}" stroke-width="${t}" fill="none" stroke-linecap="round"/>
+    <path d="M ${h},${r+h} L ${h},${s-r-h}" stroke="${atkColor}" stroke-width="${t}" fill="none" stroke-linecap="round"/>
+    <path d="M ${r+h},${s-h} L ${s-r-h},${s-h}" stroke="${defColor}" stroke-width="${t}" fill="none" stroke-linecap="round"/>
+    <path d="M ${s-h},${r+h} L ${s-h},${s-r-h}" stroke="${defColor}" stroke-width="${t}" fill="none" stroke-linecap="round"/>
+    <circle cx="${r+h}" cy="${r+h}" r="${r}" stroke="${atkColor}" stroke-width="${t}" fill="none" clip-path="inset(0 50% 50% 0)"/>
+    <circle cx="${s-r-h}" cy="${r+h}" r="${r}" stroke="${atkColor}" stroke-width="${t}" fill="none" clip-path="inset(0 0 50% 50%)"/>
+    <circle cx="${r+h}" cy="${s-r-h}" r="${r}" stroke="${defColor}" stroke-width="${t}" fill="none" clip-path="inset(50% 50% 0 0)"/>
+    <circle cx="${s-r-h}" cy="${s-r-h}" r="${r}" stroke="${defColor}" stroke-width="${t}" fill="none" clip-path="inset(50% 0 0 50%)"/>
+  </svg>`;
+}
+// ---- ターゲット逆引き：A${sn}を攻撃対象にしているDスロットを探す ----
+function findAttackerD(rule, aSlotN) {
+  for (const dn of SLOTS) {
+    const tgt = rule.targetD && rule.targetD[dn];
+    if (tgt && tgt === `a${aSlotN}`) return dn;
+  }
+  return null; // 誰も指定していない
+}
+
+// calcStudentScore: ルールのターゲット情報を使って計算
+// rule: 照合中のルールオブジェクト, sn: Aスロット番号
+function calcStudentScore(student, rule, sn) {
+  // --- atkScore: このAが攻撃するターゲットDの防御属性 ---
+  const tgtAKey = rule.targetA && rule.targetA[sn]; // 例 "d2"
+  const tgtANum = tgtAKey ? parseInt(tgtAKey[1]) : sn; // 未設定なら対面番号
+  const isTarget = !!tgtAKey;
+  const W = isTarget ? envCfg.W_target : rangeToW(student.range);
+
+  const tgtDDef = adv[tgtANum]?.def || '';
+  const atkScore = tgtDDef ? (DMG[student.atk]?.[tgtDDef] ?? 1.0) : 1.0;
+
+  // --- defScore: このAを攻撃対象とするDの攻撃属性（逆引き）---
+  const attackerDNum = findAttackerD(rule, sn);
+  const effectiveDNum = attackerDNum ?? sn; // 未設定なら対面番号
+  const attackerDAtk = adv[effectiveDNum]?.atk || '';
+  const defRaw   = attackerDAtk ? (DMG[attackerDAtk]?.[student.def] ?? 1.0) : 1.0;
+  const defScore = 1 / defRaw;
+
+  const mainScore = Math.pow(atkScore, W) * Math.pow(defScore, 1 - W);
+
+  // --- タイブレーク: 対面D（同番号）の攻撃/防御属性でスコア差を微小加算 ---
+  const faceDAtk = adv[sn]?.atk || '';
+  const faceDDef = adv[sn]?.def || '';
+  const tbAtk = faceDDef ? (DMG[student.atk]?.[faceDDef] ?? 1.0) : 1.0;
+  const tbDefRaw = faceDAtk ? (DMG[faceDAtk]?.[student.def] ?? 1.0) : 1.0;
+  const tbDef = 1 / tbDefRaw;
+  // タイブレークは主スコアの1%以内に収めて順位を微調整
+  const tbScore = (Math.pow(tbAtk, W) * Math.pow(tbDef, 1 - W) - 1.0) * 0.005;
+
+  return mainScore + tbScore;
+}
+
+function renderSeasonTab(){
+  const el = document.getElementById('season-content');
+  if(!el) return;
+
+  // 現在のW値テーブルを生成
+  const wRows = RANGE_BASES.map(rb => {
+    const n = RANGE_NUM[rb] ?? 0;
+    const w = (envCfg.W_min + (n-1)/5*(envCfg.W_max - envCfg.W_min)).toFixed(3);
+    const wDef = (1 - parseFloat(w)).toFixed(3);
+    return `<tr>
+      <td style="padding:5px 10px;border:1px solid #E5E7EB;font-weight:600;">${rb}</td>
+      <td style="padding:5px 10px;border:1px solid #E5E7EB;text-align:center;">${w}</td>
+      <td style="padding:5px 10px;border:1px solid #E5E7EB;text-align:center;">${wDef}</td>
+    </tr>`;
+  }).join('');
+  const wTargetDef = (1 - envCfg.W_target).toFixed(3);
+  const wSpecialDef = (1 - envCfg.W_special).toFixed(3);
+
+  // 遮蔽設定HTML
+  const shieldHtml = SLOTS.map(sn => `
+    <div style="margin-bottom:12px;">
+      <div style="font-size:12px;font-weight:700;color:#1E40AF;margin-bottom:6px;">A${sn}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        ${RANGE_BASES.map(rb => {
+          const checked = getShieldRequired(sn, rb) ? 'checked' : '';
+          const id = `sc-${sn}-${rb}`;
+          const bg = checked ? '#EDE9FE' : '#F9FAFB';
+          const col = checked ? '#5B21B6' : '#374151';
+          return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;padding:3px 10px;border-radius:4px;border:1px solid #E5E7EB;background:${bg};color:${col};" id="lbl-${id}">
+            <input type="checkbox" id="${id}" ${checked} onchange="onShieldCfg(${sn},'${rb}',this.checked)" style="width:12px;height:12px;cursor:pointer;">
+            ${rb}🛡重要
+          </label>`;
+        }).join('')}
+      </div>
+    </div>`).join('');
+
+  el.innerHTML = `
+    <!-- 計算式の説明 -->
+    <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:16px;margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:14px;">おすすめ生徒の出力ロジック</div>
+
+      <!-- STEP 1 -->
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;color:#2563EB;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;">Step 1 — 射程フィルタ</div>
+        <p style="font-size:12px;color:#374151;line-height:1.8;">
+          ルールで指定された推奨射程と数値が一致する生徒だけを候補に絞ります。<br>
+          🛡の有無が異なる場合（例：ルール「750」に対して生徒「750🛡」）は、
+          <strong>遮蔽重要 ON</strong> のスロットでは除外、<strong>OFF</strong> のスロットでは候補に残してスコアにペナルティを適用します。
+        </p>
+      </div>
+
+      <!-- STEP 2 -->
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;color:#2563EB;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;">Step 2 — 属性スコア計算</div>
+        <div style="background:#F8FAFF;border:1px solid #BFDBFE;border-radius:8px;padding:12px 16px;margin-bottom:8px;font-size:13px;line-height:2.0;">
+          score &nbsp;=&nbsp; atkScore <sup>W</sup> &nbsp;×&nbsp; defScore <sup>(1−W)</sup>
+        </div>
+        <table style="font-size:11px;color:#4B5563;border-collapse:collapse;width:100%;margin-bottom:8px;">
+          <tr>
+            <td style="padding:3px 8px 3px 0;white-space:nowrap;font-weight:600;color:#374151;">atkScore</td>
+            <td style="padding:3px 0;">DMG&thinsp;[生徒の攻撃属性]&thinsp;[ターゲットDの防御属性]　※未設定時は対面Dを参照</td>
+          </tr>
+          <tr>
+            <td style="padding:3px 8px 3px 0;white-space:nowrap;font-weight:600;color:#374151;">defScore</td>
+            <td style="padding:3px 0;">1 ÷ DMG&thinsp;[自スロットを狙うDの攻撃属性]&thinsp;[生徒の防御属性]　※未設定時は対面Dを参照</td>
+          </tr>
+          <tr>
+            <td style="padding:3px 8px 3px 0;white-space:nowrap;font-weight:600;color:#374151;">🛡 不一致</td>
+            <td style="padding:3px 0;">score &times; shield_penalty を適用</td>
+          </tr>
+        </table>
+        <p style="font-size:11px;color:#6B7280;">スコアの範囲は 0.5〜2.0 です。</p>
+      </div>
+
+      <!-- STEP 3: W -->
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;color:#2563EB;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;">Step 3 — 攻撃重み W の算出</div>
+        <p style="font-size:12px;color:#374151;line-height:1.8;margin-bottom:6px;">
+          W は「攻撃属性をどれだけ優先するか」を 0〜1 で表します。<br>
+          射程が長いキャラほど攻撃貢献が大きいため W が高く設定されます。<br>
+          ターゲット設定でそのスロットへの直接攻撃が明示されている場合は、
+          防御属性を最優先するため W を最小値（W_target）に固定します。
+        </p>
+      </div>
+
+      <!-- STEP 4: dot -->
+      <div style="margin-bottom:4px;">
+        <div style="font-size:11px;font-weight:700;color:#2563EB;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;">Step 4 — おすすめ度（ドット）の判定</div>
+        <table style="font-size:11px;color:#374151;border-collapse:collapse;width:100%;">
+          <tr style="background:#F3F4F6;">
+            <th style="padding:4px 10px;border:1px solid #E5E7EB;text-align:center;">ドット</th>
+            <th style="padding:4px 10px;border:1px solid #E5E7EB;text-align:left;">score の範囲</th>
+            <th style="padding:4px 10px;border:1px solid #E5E7EB;text-align:left;">目安</th>
+          </tr>
+          <tr><td style="padding:4px 10px;border:1px solid #E5E7EB;text-align:center;background:#EDE9FE;color:#5B21B6;font-weight:700;">●●●●</td><td style="padding:4px 10px;border:1px solid #E5E7EB;">1.90 以上</td><td style="padding:4px 10px;border:1px solid #E5E7EB;">攻撃・防御ともに最有利</td></tr>
+          <tr><td style="padding:4px 10px;border:1px solid #E5E7EB;text-align:center;color:#5B21B6;font-weight:700;">●●●○</td><td style="padding:4px 10px;border:1px solid #E5E7EB;">1.20 以上</td><td style="padding:4px 10px;border:1px solid #E5E7EB;">いずれかが強く有利</td></tr>
+          <tr><td style="padding:4px 10px;border:1px solid #E5E7EB;text-align:center;color:#5B21B6;font-weight:700;">●●○○</td><td style="padding:4px 10px;border:1px solid #E5E7EB;">0.85 以上</td><td style="padding:4px 10px;border:1px solid #E5E7EB;">おおむね等倍前後</td></tr>
+          <tr><td style="padding:4px 10px;border:1px solid #E5E7EB;text-align:center;color:#9CA3AF;">●○○○</td><td style="padding:4px 10px;border:1px solid #E5E7EB;">0.55 以上</td><td style="padding:4px 10px;border:1px solid #E5E7EB;">やや不利あり</td></tr>
+          <tr><td style="padding:4px 10px;border:1px solid #E5E7EB;text-align:center;color:#D1D5DB;">○○○○</td><td style="padding:4px 10px;border:1px solid #E5E7EB;">0.55 未満</td><td style="padding:4px 10px;border:1px solid #E5E7EB;">非表示</td></tr>
+        </table>
+      </div>
+      <table style="border-collapse:collapse;font-size:12px;width:100%;margin-bottom:10px;">
+        <thead>
+          <tr style="background:#F3F4F6;">
+            <th style="padding:5px 10px;border:1px solid #E5E7EB;text-align:left;">射程</th>
+            <th style="padding:5px 10px;border:1px solid #E5E7EB;">W（攻撃重み）</th>
+            <th style="padding:5px 10px;border:1px solid #E5E7EB;">1−W（防御重み）</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${wRows}
+          <tr style="background:#FEF3C7;">
+            <td style="padding:5px 10px;border:1px solid #E5E7EB;font-weight:600;">直接攻撃対象</td>
+            <td style="padding:5px 10px;border:1px solid #E5E7EB;text-align:center;">${envCfg.W_target.toFixed(3)}</td>
+            <td style="padding:5px 10px;border:1px solid #E5E7EB;text-align:center;">${wTargetDef}</td>
+          </tr>
+          <tr style="background:#EDE9FE;">
+            <td style="padding:5px 10px;border:1px solid #E5E7EB;font-weight:600;">特殊射程（ツルギ等）</td>
+            <td style="padding:5px 10px;border:1px solid #E5E7EB;text-align:center;">${envCfg.W_special.toFixed(3)}</td>
+            <td style="padding:5px 10px;border:1px solid #E5E7EB;text-align:center;">${wSpecialDef}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- パラメータ調整 -->
+    <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:16px;margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px;">パラメータ調整</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        ${[
+          ['W_min',         '射程350のW（攻撃重み）',  '0〜1 ※小さいほど防御重視'],
+          ['W_max',         '射程850のW（攻撃重み）',  '0〜1 ※大きいほど攻撃重視'],
+          ['W_target',      '直接攻撃対象のW',          '0〜1 ※通常より小さく推奨'],
+          ['W_special',     '特殊射程のW',              '0〜1 ※0.5が中立'],
+          ['shield_penalty','🛡不一致ペナルティ係数',   '0〜1 ※低いほど不一致生徒を下位に'],
+        ].map(([key, label, hint]) => `
+          <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:10px;">
+            <div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:2px;">${label}</div>
+            <div style="font-size:10px;color:#9CA3AF;margin-bottom:6px;">${hint}</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div class="env-slider-wrap" id="sw-${key}" data-key="${key}">
+                <div class="env-slider-track">
+                  <div class="env-slider-fill" id="sf-${key}" style="width:${(envCfg[key]*100).toFixed(1)}%"></div>
+                </div>
+                <div class="env-slider-thumb" id="st-${key}" style="left:${(envCfg[key]*100).toFixed(1)}%" data-key="${key}"></div>
+              </div>
+              <span id="env-val-${key}" style="font-size:13px;font-weight:700;color:#1E40AF;min-width:36px;text-align:right;">${envCfg[key].toFixed(2)}</span>
+            </div>
+          </div>`).join('')}
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;">
+        <button onclick="resetEnvCfg()" style="padding:6px 14px;border-radius:6px;border:1px solid #E5E7EB;background:#F9FAFB;color:#6B7280;font-size:12px;font-family:inherit;cursor:pointer;">デフォルトに戻す</button>
+        <span id="env-reset-msg" style="font-size:11px;color:#059669;display:none;">リセットしました</span>
+      </div>
+    </div>
+
+    <!-- 遮蔽設定 -->
+    <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:16px;">
+      <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:6px;">遮蔽設定（スロットごと）</div>
+      <p style="font-size:11px;color:#6B7280;margin-bottom:12px;">ONにすると🛡の不一致生徒を除外します。OFFのときは除外せず、スコアにペナルティ係数（shield_penalty）を乗算して表示順を下げます。</p>
+      ${shieldHtml}
+    </div>
+
+    <!-- 手持ち・育成状況 -->
+    <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:16px;margin-top:14px;">
+      <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:6px;">生徒の手持ち・育成状況</div>
+      <p style="font-size:11px;color:#6B7280;margin-bottom:12px;">アイコンをクリックするとモノクロ（未育成）になり、おすすめ候補から除外されます。</p>
+      <div class="roster-grid" id="roster-grid"></div>
+    </div>
+  `;
+  renderRoster();
+}
+
+
+
+
+/* ===== 手持ち・育成状況 ===== */
+// unowned: Set of student names that are greyed out (not raised)
+let unownedSet = new Set();
+try {
+  const saved = JSON.parse(localStorage.getItem('pvp_unowned') || '[]');
+  unownedSet = new Set(saved);
+} catch(e) {}
+
+function saveUnowned() {
+  try { localStorage.setItem('pvp_unowned', JSON.stringify([...unownedSet])); } catch(e) {}
+}
+
+function isOwned(name) { return !unownedSet.has(name); }
+
+function toggleOwned(name) {
+  if (unownedSet.has(name)) unownedSet.delete(name);
+  else unownedSet.add(name);
+  saveUnowned();
+
+  // ロスターアイコンを即時更新
+  const el = document.getElementById('ri-' + name);
+  if (el) el.classList.toggle('unowned', unownedSet.has(name));
+
+  // 開いているポップアップの id を保持してから再描画
+  const openIds = [...document.querySelectorAll('.student-popup.open')].map(p => p.id);
+
+  // renderResults でポップアップのHTMLを再生成（getRecommendedStudents を再計算）
+  renderResults();
+
+  // 再描画後に同じポップアップを開き直す
+  openIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('open');
+  });
+}
+
+// 50音順ソート用の読み仮名マップは名前そのままで sort（ひらがな・カタカナ対応）
+function kanaSort(a, b) {
+  return a.name.localeCompare(b.name, 'ja');
+}
+
+function renderRoster() {
+  const el = document.getElementById('roster-grid');
+  if (!el) return;
+  const sorted = [...STUDENTS].sort(kanaSort);
+  el.innerHTML = sorted.map(s => {
+    const grey = unownedSet.has(s.name) ? 'unowned' : '';
+    return `<div class="roster-icon ${grey}" id="ri-${s.name}" onclick="toggleOwned('${s.name.replace(/'/g, "\'")}')">
+      <img src="students/${s.name}.png" onerror="this.style.opacity='0.3'" alt="${s.name}" title="${s.name}">
+      <div class="roster-icon-name">${s.name}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ===== 生徒名入力（D入力スロット用） ===== */
+// 生徒名→データのマップ
+const STUDENT_MAP = Object.fromEntries(STUDENTS.map(s=>[s.name, s]));
+const STUDENT_NAMES = STUDENTS.map(s=>s.name);
+
+function filterStudents(query) {
+  if(!query) return [];
+  const q = query.toLowerCase();
+  return STUDENT_NAMES.filter(n=>n.toLowerCase().includes(q)).slice(0, 10);
+}
+
+function onStudentInput(n, val) {
+  const listEl = document.getElementById(`sl-${n}`);
+  const matches = filterStudents(val);
+  if(matches.length && val) {
+    listEl.innerHTML = matches.map(name=>`
+      <div class="student-suggest-item" onmousedown="selectStudent(${n},'${name.replace(/'/g,"\'")}')">
+        <img src="students/${name}.png" onerror="this.src='data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAIB'" alt="">
+        ${name}
+      </div>`).join('');
+    listEl.classList.add('open');
+  } else {
+    listEl.classList.remove('open');
+  }
+}
+
+function selectStudent(n, name) {
+  const s = STUDENT_MAP[name];
+  if(!s) return;
+  // 入力欄に名前をセット
+  const inputEl = document.getElementById(`si-${n}`);
+  if(inputEl) inputEl.value = name;
+  document.getElementById(`sl-${n}`).classList.remove('open');
+  // 射程・攻撃・防御を自動入力
+  adv[n].range = s.range;
+  adv[n].atk   = s.atk;
+  adv[n].def   = s.def;
+  adv[n].studentName = name;
+  render();
+}
+
+function onStudentBlur(n) {
+  setTimeout(()=>{ const el=document.getElementById(`sl-${n}`); if(el) el.classList.remove('open'); }, 150);
+}
+
+// 属性・射程を手動変更した場合、生徒名との整合性チェックは行わず両立させる
+// （生徒名入力はあくまで補助）
+/* ===== カスタムスライダードラッグ（相対移動方式） ===== */
+(function(){
+  // dragging: { key, wrap, startX, startVal }
+  let dragging = null;
+
+  function setSliderVal(key, val) {
+    val = Math.max(0, Math.min(1, val));
+    val = Math.round(val * 100) / 100;
+    const pct = (val * 100).toFixed(1) + '%';
+    const thumb = document.getElementById('st-' + key);
+    const fill  = document.getElementById('sf-' + key);
+    if (thumb) thumb.style.left = pct;
+    if (fill)  fill.style.width = pct;
+    onEnvSlider(key, val);
+  }
+
+  function clientX(e) {
+    return e.touches ? e.touches[0].clientX : e.clientX;
+  }
+
+  // トラック部分（つまみ以外）をクリックした場合はその位置に即ジャンプ
+  // つまみをドラッグした場合は相対移動
+  document.addEventListener('pointerdown', function(e) {
+    const thumb = e.target.closest('.env-slider-thumb');
+    const track = e.target.closest('.env-slider-track');
+    const wrap  = e.target.closest('.env-slider-wrap');
+    if (!wrap) return;
+    const key = wrap.dataset.key;
+    if (!key) return;
+
+    const rect = wrap.getBoundingClientRect();
+
+    if (thumb) {
+      // つまみを掴んだ: 現在値を起点に相対移動
+      const curVal = envCfg[key] ?? 0.5;
+      dragging = { key, wrap, startX: clientX(e), startVal: curVal, wrapW: rect.width };
+      thumb.classList.add('dragging');
+      thumb.setPointerCapture(e.pointerId);
+    } else {
+      // トラッククリック: その位置に即移動
+      const pct = Math.max(0, Math.min(1, (clientX(e) - rect.left) / rect.width));
+      setSliderVal(key, pct);
+      // そのままドラッグ継続できるよう dragging をセット
+      dragging = { key, wrap, startX: clientX(e), startVal: pct, wrapW: rect.width };
+    }
+    e.preventDefault();
+  }, { passive: false });
+
+  document.addEventListener('pointermove', function(e) {
+    if (!dragging) return;
+    const dx   = clientX(e) - dragging.startX;
+    const dval = dx / dragging.wrapW;
+    setSliderVal(dragging.key, dragging.startVal + dval);
+    e.preventDefault();
+  }, { passive: false });
+
+  document.addEventListener('pointerup', function(e) {
+    if (!dragging) return;
+    const thumb = document.getElementById('st-' + dragging.key);
+    if (thumb) thumb.classList.remove('dragging');
+    dragging = null;
+  });
+
+  document.addEventListener('pointercancel', function() {
+    if (dragging) {
+      const thumb = document.getElementById('st-' + dragging.key);
+      if (thumb) thumb.classList.remove('dragging');
+    }
+    dragging = null;
+  });
+})();
+
+function onEnvSlider(key, val){
+  envCfg[key] = parseFloat(val);
+  saveEnvCfg();
+  const el = document.getElementById('env-val-'+key);
+  if(el) el.textContent = parseFloat(val).toFixed(2);
+  renderResults();
+  renderSeasonTab(); // テーブル再描画
+}
+
+function resetEnvCfg(){
+  envCfg = {...ENV_DEFAULTS};
+  saveEnvCfg();
+  renderSeasonTab();
+  renderResults();
+  const msg = document.getElementById('env-reset-msg');
+  if(msg){ msg.style.display='inline'; setTimeout(()=>msg.style.display='none',1500); }
+}
+
+function renderMatrix(){
+  document.getElementById('mtx').innerHTML=
+    `<thead><tr><th></th>${ATK_ALL.map(a=>`<th>${chip(a)}</th>`).join('')}</tr></thead>
+     <tbody>${DEF_ALL.map(def=>`<tr><th>${chip(def)}</th>${ATK_ALL.map(atk=>{
+       const m=DMG[atk][def];
+       return `<td class="${m>=2?'cx2':m>=1.5?'cx15':m<1?'cx05':'cx1'}">×${m}</td>`;
+     }).join('')}</tr>`).join('')}</tbody>`;
+}
+
+function toggleRuleDetail(id){
+  const el=document.getElementById(id);
+  if(!el) return;
+  const btn=el.previousElementSibling.querySelector('span:last-child');
+  if(el.style.display==='none'){
+    el.style.display='block';
+    if(btn) btn.textContent='▲ 閉じる';
+  } else {
+    el.style.display='none';
+    if(btn) btn.textContent='▼ 詳細';
+  }
+}
+
+function togglePopup(id, e){
+  e.stopPropagation();
+  const el = document.getElementById(id);
+  const wasOpen = el.classList.contains('open');
+  document.querySelectorAll('.student-popup.open').forEach(p => {
+    p.classList.remove('open');
+    p.style.left = '';
+    p.style.top  = '';
+  });
+  if (!wasOpen) {
+    const btn = e.currentTarget;
+    const rect = btn.getBoundingClientRect();
+    const popupW = 340;
+    const margin = 6;
+    // 左右はみ出しチェック
+    let left = rect.left;
+    if (left + popupW > window.innerWidth - margin) {
+      left = window.innerWidth - popupW - margin;
+    }
+    if (left < margin) left = margin;
+    // 下にはみ出す場合は上に出す
+    const estH = 300;
+    let top = rect.bottom + margin;
+    if (top + estH > window.innerHeight - margin) {
+      top = rect.top - estH - margin;
+      if (top < margin) top = margin;
+    }
+    el.style.left = left + 'px';
+    el.style.top  = top  + 'px';
+    el.classList.add('open');
+  }
+}
+
+
+/* ===== 設定タブ ===== */
+function renderAppSettings(){
+  const el = document.getElementById('appsettings-content');
+  if(!el) return;
+
+  const excludeChecked = excludeGreen ? 'checked' : '';
+  const showAttrChecked = cfg.showAttrPanel ? 'checked' : '';
+  const showDmgChecked  = cfg.showDmg       ? 'checked' : '';
+
+  // テンプレートリテラルを使わず文字列連結で安全に生成
+  const html = '<div style="max-width:520px;">'
+    + '<div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:16px;margin-bottom:14px;">'
+    + '<div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:14px;">表示設定</div>'
+    + '<div style="display:flex;flex-direction:column;gap:12px;">'
+    + '<label style="display:flex;align-items:center;justify-content:space-between;gap:16px;cursor:pointer;">'
+    + '<div><div style="font-size:13px;color:#374151;font-weight:500;">分解 / 複合装甲 を考慮しない</div>'
+    + '<div style="font-size:11px;color:#9CA3AF;margin-top:2px;">ONにすると属性推奨の計算から分解・複合装甲を除外します</div></div>'
+    + '<input type="checkbox" id="cfg-exclude-green" ' + excludeChecked + ' onchange="toggleExcludeFromSettings(this.checked)" style="width:16px;height:16px;cursor:pointer;flex-shrink:0;"></label>'
+    + '<div style="border-top:1px solid #F3F4F6;"></div>'
+    + '<label style="display:flex;align-items:center;justify-content:space-between;gap:16px;cursor:pointer;">'
+    + '<div><div style="font-size:13px;color:#374151;font-weight:500;">「属性推奨（対面）」を表示</div>'
+    + '<div style="font-size:11px;color:#9CA3AF;margin-top:2px;">編成アドバイスタブの属性推奨パネルの表示・非表示を切り替えます</div></div>'
+    + '<input type="checkbox" id="cfg-show-attr-panel2" ' + showAttrChecked + ' onchange="applySetting(\'showAttrPanel\',this.checked)" style="width:16px;height:16px;cursor:pointer;flex-shrink:0;"></label>'
+    + '<div style="border-top:1px solid #F3F4F6;"></div>'
+    + '<label style="display:flex;align-items:center;justify-content:space-between;gap:16px;cursor:pointer;">'
+    + '<div><div style="font-size:13px;color:#374151;font-weight:500;">ダメージ倍率を表示</div>'
+    + '<div style="font-size:11px;color:#9CA3AF;margin-top:2px;">「攻 ×2.0」などの倍率バッジの表示・非表示を切り替えます</div></div>'
+    + '<input type="checkbox" id="cfg-show-dmg2" ' + showDmgChecked + ' onchange="applySetting(\'showDmg\',this.checked)" style="width:16px;height:16px;cursor:pointer;flex-shrink:0;"></label>'
+    + '</div></div>'
+    // スプシ読み込み枠
+    + '<div class="sheet-load-area">'
+    + '<div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:8px;">みんなでつくる対抗戦配置辞書　β版からルールを読み込む</div>'
+    + '<p style="font-size:11px;color:#6B7280;margin-bottom:10px;">コミュニティで共有された配置ルールを取得します。既存のみん辞書ルールは上書きされます（手動登録ルールは保持されます）。</p>'
+    + '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">'
+    + '<button class="btn-sheet" id="sheet-load-btn" onclick="loadFromSheet()">ルール更新</button>'
+    + '</div>'
+    + '<div class="sheet-status" id="sheet-status"></div>'
+    + '<div id="sheet-imported-list" style="margin-top:6px;"></div>'
+    + '</div>'
+    + '</div>';
+  el.innerHTML = html;
+}
+
+function toggleExcludeFromSettings(val){
+  excludeGreen = val;
+  renderResults();
+}
+
+
+/* ===== Googleスプレッドシート読み込み ===== */
+const VALID_RANGES_SET = new Set([
+  '350','350\u{1F6E1}\u{FE0F}'.normalize(),'350\uD83D\uDEE1\uFE0F',
+  '350🛡','450','450🛡','550','550🛡',
+  '650','650🛡','750','750🛡','850','850🛡',
+  '\u30C4\u30EB\u30AE','\u30A2\u30AB\u30CD',
+  '\u30B7\u30E5\u30F3\u5C5E','\u30C9\u30D2\u30CA\u5C5E'
+]);
+
+function cleanCell(v) {
+  if (!v) return '';
+  return v.replace(/[\u200b\u00a0]/g,'').trim();
+}
+
+function parseRangesFromCell(raw) {
+  if (!raw) return [];
+  return raw.split(',').map(function(s){ return s.trim(); })
+    .filter(function(s){ return VALID_RANGES_SET.has(s); });
+}
+
+function parseTargetCell(raw) {
+  if (!raw) return '';
+  var v = raw.trim().toLowerCase();
+  return ['a1','a2','a3','a4','d1','d2','d3','d4'].indexOf(v) >= 0 ? v : '';
+}
+
+function parseCSVText(text) {
+  var rows = [], lines = text.split(/\r?\n/);
+  for (var li = 0; li < lines.length; li++) {
+    var line = lines[li], cols = [], cur = '', inQ = false;
+    for (var i = 0; i < line.length; i++) {
+      var c = line[i];
+      if (c === '"') {
+        if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+        else inQ = !inQ;
+      } else if (c === ',' && !inQ) {
+        cols.push(cur); cur = '';
+      } else { cur += c; }
+    }
+    cols.push(cur);
+    rows.push(cols);
+  }
+  return rows;
+}
+
+function parseOneRuleSet(row2, row3) {
+  var name = cleanCell(row2[1]);
+  if (!name) return null;
+  var aRanges = [2,3,4,5].map(function(i){ return parseRangesFromCell(cleanCell(row2[i])); });
+  var dRanges = [6,7,8,9].map(function(i){ return parseRangesFromCell(cleanCell(row2[i])); });
+  var aTargets= [2,3,4,5].map(function(i){ return parseTargetCell(cleanCell(row3[i])); });
+  var dTargets= [6,7,8,9].map(function(i){ return parseTargetCell(cleanCell(row3[i])); });
+  if (!aRanges.every(function(r){ return r.length>0; })) return null;
+  if (!dRanges.every(function(r){ return r.length>0; })) return null;
+  var a={}, d={}, targetA={}, targetD={};
+  [1,2,3,4].forEach(function(sn,i){
+    a[sn]=aRanges[i]; d[sn]=dRanges[i];
+    targetA[sn]=aTargets[i]; targetD[sn]=dTargets[i];
+  });
+  return { id: Date.now()+Math.random(), name:name, a:a, d:d, targetA:targetA, targetD:targetD, fromSheet:true };
+}
+
+function loadFromSheet() {
+  var statusEl = document.getElementById('sheet-status');
+  var btn      = document.getElementById('sheet-load-btn');
+  var listEl   = document.getElementById('sheet-imported-list');
+  statusEl.className='sheet-status loading';
+  statusEl.textContent='読み込み中…';
+  if(btn) btn.disabled=true;
+  if(listEl) listEl.innerHTML='';
+
+  // みん辞書 GAS WebApp URL（固定）
+  var gasUrl = 'https://script.google.com/macros/s/AKfycbymTcn8ofJPA6UTv_SNWycJ1oZVcGwTBaIpvFtZ3gbTe2B7ooLfV4kdGMzCKqGd6mXZLA/exec';
+
+  // GAS WebApp URLをそのままfetch
+  fetch(gasUrl).then(function(res){
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    return res.text();
+  }).then(function(text){
+    var rows = parseCSVText(text);
+    var newRules = [];
+    var setIdx = 0;
+    while(true){
+      var r2i = setIdx*3+1, r3i = setIdx*3+2;
+      if(r2i>=rows.length || r3i>=rows.length) break;
+      var rule = parseOneRuleSet(rows[r2i], rows[r3i]);
+      if(rule) newRules.push(rule);
+      setIdx++;
+    }
+    if(newRules.length===0){
+      statusEl.className='sheet-status err';
+      statusEl.textContent='有効なルールが見つかりませんでした（全スロットに射程が必要です）。';
+    } else {
+      rules = rules.filter(function(r){ return !r.fromSheet; }).concat(newRules);
+      try{ localStorage.setItem('pvp_rules',JSON.stringify(rules)); }catch(e){}
+      renderSavedRules();
+      renderResults();
+      statusEl.className='sheet-status ok';
+      statusEl.textContent='\u2713 '+newRules.length+' 件のルールを読み込みました。';
+      if(listEl) listEl.innerHTML=newRules.map(function(r){
+        return '<span class="sheet-chip">'+escHtml(r.name)+'</span>';
+      }).join('');
+    }
+  }).catch(function(e){
+    statusEl.className='sheet-status err';
+    statusEl.textContent='読み込みエラー: '+e.message+'。GAS WebアプリのURLとアクセス権（全員）を確認してください。';
+  }).finally(function(){
+    if(btn) btn.disabled=false;
+  });
+}
+
+function switchTab(tab){
+  document.querySelectorAll('.tab-pane').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.querySelectorAll('.tab-btn')[{advisor:0,rules:1,matrix:2,season:3,appsettings:4}[tab]].classList.add('active');
+  if(tab==='season') renderSeasonTab();
+  if(tab==='appsettings') renderAppSettings();
+}
+
+render();
+renderRuleForm();
+renderSavedRules();
+renderMatrix();
+</script>
+
+<script>
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.student-btn-wrap')) {
+    document.querySelectorAll('.student-popup.open').forEach(p => p.classList.remove('open'));
+  }
+});
+</script>
+</body>
+</html>
