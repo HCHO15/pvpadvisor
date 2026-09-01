@@ -253,7 +253,7 @@
 <body>
 <div class="page">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-    <h1 style="margin-bottom:0;">⚔️ 戦術対抗戦 編成アドバイザー</span></h1>
+    <h1 style="margin-bottom:0;">⚔️ 戦術対抗戦 編成アドバイザー</h1>
     
   </div>
   <div class="tabs">
@@ -536,53 +536,42 @@ function computeCombos(n){
 /* ===== ルール内ターゲットを使った属性推奨 ===== */
 // 戻り値: { combos, isFallback } | null
 function computeRuleAttrCombos(rule, sn){
-  const tgt = (rule.targetA && rule.targetA[sn]) || '';
+  // calcStudentScore と同じ幾何平均方式でソート
+  // atkScore = DMG[aAtk][tgtDDef]  (高いほど良い)
+  // defScore = 1 / DMG[attackerDAtk][aDef]  (低い被ダメ = 高スコア)
+  // primary  = atkScore^W * defScore^(1-W)
 
-  // ターゲット設定あり → ターゲットDスロットの属性を参照
-  if(tgt){
-    const tgtNum = parseInt(tgt[1]);
-    const dAtk = adv[tgtNum] ? adv[tgtNum].atk : '';
-    const dDef  = adv[tgtNum] ? adv[tgtNum].def  : '';
-    if(!dAtk && !dDef) return null;
-    const combos=[];
-    for(const aAtk of activeATK()) for(const aDef of activeDEF()){
-      const atkScore=dDef?DMG[aAtk][dDef]:null;
-      const defRaw  =dAtk?DMG[dAtk][aDef]:null;
-      const defScore=defRaw!==null?2-defRaw:null;
-      const primary=(atkScore??0)+(defScore??0);
-      combos.push({aAtk,aDef,atkScore,defRaw,defScore,primary,tie:0});
-    }
-    combos.sort((a,b)=>{
-      if(b.primary!==a.primary) return b.primary-a.primary;
-      const ad=a.defScore??0,bd=b.defScore??0;
-      if(bd!==ad) return bd-ad;
-      return b.tie-a.tie;
-    });
-    return { combos: combos.slice(0,2), isFallback: false };
-  }
+  const tgtAKey = rule.targetA && rule.targetA[sn];
+  const tgtANum = tgtAKey ? parseInt(tgtAKey[1]) : sn;
+  const isTarget = !!tgtAKey;
+  const W = isTarget ? envCfg.W_target : 0.68; // スロット射程不明なのでW=0.68で近似
 
-  // ターゲット未設定 → 対面（同番号）＋隣接タイブレークでフォールバック
-  const dAtk=adv[sn].atk, dDef=adv[sn].def;
-  if(!dAtk && !dDef) return null;
-  const nbDefs=neighbors(sn).map(s=>adv[s].def).filter(Boolean);
-  const nbAtks=neighbors(sn).map(s=>adv[s].atk).filter(Boolean);
+  const tgtDDef = adv[tgtANum]?.def || '';
+  if(!tgtDDef && !adv[sn]?.atk && !adv[sn]?.def) return null;
+
+  const attackerDNum = findAttackerD(rule, sn) ?? sn;
+  const attackerDAtk = adv[attackerDNum]?.atk || '';
+
+  const isFallback = !tgtAKey;
+  const nbDefs = neighbors(sn).map(s=>adv[s].def).filter(Boolean);
+  const nbAtks = neighbors(sn).map(s=>adv[s].atk).filter(Boolean);
+
   const combos=[];
   for(const aAtk of activeATK()) for(const aDef of activeDEF()){
-    const atkScore=dDef?DMG[aAtk][dDef]:null;
-    const defRaw  =dAtk?DMG[dAtk][aDef]:null;
-    const defScore=defRaw!==null?2-defRaw:null;
-    const primary=(atkScore??0)+(defScore??0);
-    const nbAt=nbDefs.length?nbDefs.reduce((s,d)=>s+DMG[aAtk][d],0)/nbDefs.length:0;
-    const nbDt=nbAtks.length?nbAtks.reduce((s,a)=>s+(2-DMG[a][aDef]),0)/nbAtks.length:0;
-    combos.push({aAtk,aDef,atkScore,defRaw,defScore,primary,tie:nbAt+nbDt});
+    const atkScore = tgtDDef ? (DMG[aAtk]?.[tgtDDef] ?? 1.0) : 1.0;
+    const defRaw   = attackerDAtk ? (DMG[attackerDAtk]?.[aDef] ?? 1.0) : 1.0;
+    const defScore = 1 / defRaw;
+    const primary  = Math.pow(atkScore, W) * Math.pow(defScore, 1-W);
+
+    // タイブレーク: 隣接スロットの属性で微調整
+    const nbAt = nbDefs.length ? nbDefs.reduce((s,d)=>s+Math.pow(DMG[aAtk]?.[d]??1,W),0)/nbDefs.length : 1;
+    const nbDt = nbAtks.length ? nbAtks.reduce((s,a)=>s+Math.pow(1/(DMG[a]?.[aDef]??1),1-W),0)/nbAtks.length : 1;
+    const tie  = primary * (nbAt * nbDt - 1) * 0.01; // 主スコアの1%以内
+
+    combos.push({aAtk, aDef, atkScore, defRaw, primary, tie});
   }
-  combos.sort((a,b)=>{
-    if(b.primary!==a.primary) return b.primary-a.primary;
-    const ad=a.defScore??0,bd=b.defScore??0;
-    if(bd!==ad) return bd-ad;
-    return b.tie-a.tie;
-  });
-  return { combos: combos.slice(0,2), isFallback: true };
+  combos.sort((a,b) => (b.primary+b.tie) - (a.primary+a.tie));
+  return { combos: combos.slice(0,2), isFallback };
 }
 
 /* 推奨射程がツルギ・アカネのみかどうか判定 */
