@@ -304,6 +304,15 @@
       .attr-panel-body,
       .attr-panel-header { grid-template-columns: 1fr 1fr; }
     }
+
+    .rule-student-wrap { position:relative; margin-bottom:5px; }
+    .rule-student-input { width:100%; font-size:11px; padding:3px 6px; border:1px solid #E5E7EB; border-radius:5px; background:#F9FAFB; font-family:inherit; color:#111827; box-sizing:border-box; }
+    .rule-student-input:focus { outline:none; border-color:#BAE6FD; background:#fff; }
+    .rule-student-suggest { position:absolute; top:100%; left:0; right:0; z-index:300; background:#fff; border:1px solid #E5E7EB; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,.1); max-height:140px; overflow-y:auto; display:none; }
+    .rule-student-suggest.open { display:block; }
+    .rule-student-suggest-item { padding:4px 7px; font-size:11px; cursor:pointer; color:#374151; display:flex; align-items:center; gap:5px; }
+    .rule-student-suggest-item:hover { background:#EFF6FF; }
+    .rule-student-suggest-item img { width:20px; height:20px; border-radius:3px; object-fit:cover; background:#F3F4F6; }
   </style>
 </head>
 <body>
@@ -819,20 +828,85 @@ function cbGroupHtml(prefix,n){
 }
 
 function slotRowHtml(prefix, n){
-  // ターゲット選択（対面スロットから選ぶ）
   const tgtHtml=`<div class="target-row">
     <span class="target-lbl">ターゲット</span>
     <select class="target-select" id="tgt-${prefix}${n}">
       ${targetOptions(prefix, n)}
     </select>
   </div>`;
+  const sid = 'rsi-' + prefix + n;
+  const sld = 'rsl-' + prefix + n;
   return `<div class="rule-slot-row">
     <span class="rule-slot-num">${prefix.toUpperCase()}${n}</span>
     <div class="rule-slot-inputs">
+      <div class="rule-student-wrap">
+        <input class="rule-student-input" id="${sid}" type="text"
+          placeholder="生徒名で自動入力…"
+          oninput="onRSI('${prefix}',${n},this.value)"
+          onblur="onRSIBlur('${prefix}',${n})"
+          autocomplete="off">
+        <div id="${sld}" class="rule-student-suggest"></div>
+      </div>
       <div class="cb-group">${cbGroupHtml(prefix,n)}</div>
       ${tgtHtml}
     </div>
   </div>`;
+}
+
+
+/* ===== ルールタブ生徒名入力 ===== */
+function onRSI(prefix, n, val) {
+  var listEl = document.getElementById('rsl-' + prefix + n);
+  if (!listEl) return;
+  var matches = filterStudents(val);
+  if (matches.length && val) {
+    listEl.innerHTML = '';
+    matches.forEach(function(name) {
+      var item = document.createElement('div');
+      item.className = 'rule-student-suggest-item';
+      var img = document.createElement('img');
+      img.src = 'students/' + name + '.png';
+      img.onerror = function(){ this.style.display = 'none'; };
+      img.alt = '';
+      var txt = document.createTextNode(name);
+      item.appendChild(img);
+      item.appendChild(txt);
+      item.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        selectRSI(prefix, n, name);
+      });
+      listEl.appendChild(item);
+    });
+    listEl.classList.add('open');
+  } else {
+    listEl.classList.remove('open');
+  }
+}
+
+function selectRSI(prefix, n, name) {
+  var s = STUDENT_MAP[name];
+  if (!s) return;
+  var inputEl = document.getElementById('rsi-' + prefix + n);
+  if (inputEl) inputEl.value = name;
+  var listEl = document.getElementById('rsl-' + prefix + n);
+  if (listEl) listEl.classList.remove('open');
+  // 全チェック解除してから該当射程をON
+  RANGES.forEach(function(r) {
+    var id = 'cb-' + prefix + n + '-' + r.replace(/\s/g, '_');
+    var el = document.getElementById(id);
+    if (el) el.checked = false;
+  });
+  var rangeKey = s.range;
+  var cbId = 'cb-' + prefix + n + '-' + rangeKey.replace(/\s/g, '_');
+  var cbEl = document.getElementById(cbId);
+  if (cbEl) cbEl.checked = true;
+}
+
+function onRSIBlur(prefix, n) {
+  setTimeout(function() {
+    var el = document.getElementById('rsl-' + prefix + n);
+    if (el) el.classList.remove('open');
+  }, 150);
 }
 
 function renderRuleForm(){
