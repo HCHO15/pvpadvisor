@@ -126,6 +126,8 @@
     .rule-expand-btn.open { transform:rotate(180deg); }
     .btn-danger { padding:4px 10px; border-radius:5px; border:1px solid #FECACA; cursor:pointer; font-size:11px; font-family:inherit; background:#FEF2F2; color:#B91C1C; }
     .btn-danger:hover { background:#FEE2E2; }
+    .btn-copy { padding:4px 10px; border-radius:5px; border:1px solid #BBF7D0; cursor:pointer; font-size:11px; font-family:inherit; background:#F0FDF4; color:#166534; }
+    .btn-copy:hover { background:#DCFCE7; }
     .btn-edit { padding:4px 10px; border-radius:5px; border:1px solid #BFDBFE; cursor:pointer; font-size:11px; font-family:inherit; background:#EFF6FF; color:#1E40AF; }
     .btn-edit:hover { background:#DBEAFE; }
     .edit-form { background:#F0F9FF; border:1px solid #BAE6FD; border-radius:8px; padding:12px; margin-top:8px; }
@@ -899,14 +901,17 @@ function renderDPanel(){
     const mk=(field,opts,val)=>`<select onchange="onSel(${n},'${field}',this.value)"><option value="">-</option>${opts.map(o=>`<option value="${o}"${o===val?' selected':''}>${o}</option>`).join('')}</select>`;
     const sName = s.studentName||'';
     return `<div class="d-slot-col">
-      <div class="student-input-wrap">
-        <input id="si-${n}" class="student-input" type="text"
-          placeholder="生徒名で検索…"
-          value="${sName.replace(/"/g,'&quot;')}"
-          oninput="onStudentInput(${n},this.value)"
-          onblur="onStudentBlur(${n})"
-          autocomplete="off">
-        <div id="sl-${n}" class="student-suggest"></div>
+      <div style="display:flex;gap:4px;align-items:flex-start;margin-bottom:6px;">
+        <div class="student-input-wrap" style="flex:4;margin-bottom:0;">
+          <input id="si-${n}" class="student-input" type="text"
+            placeholder="生徒名で検索…"
+            value="${sName.replace(/"/g,'&quot;')}"
+            oninput="onStudentInput(${n},this.value)"
+            onblur="onStudentBlur(${n})"
+            autocomplete="off">
+          <div id="sl-${n}" class="student-suggest"></div>
+        </div>
+        <button onclick="clearSlot(${n})" style="flex:1;padding:4px 0;font-size:11px;font-family:inherit;border:1px solid #E5E7EB;border-radius:5px;background:#F9FAFB;color:#6B7280;cursor:pointer;white-space:nowrap;">クリア</button>
       </div>
       <div class="field-row"><span class="field-lbl">射程</span>${mk('range',RANGES,s.range)}</div>
       <div class="field-row"><span class="field-lbl">攻撃</span>${mk('atk',ATK_ALL,s.atk)}</div>
@@ -914,7 +919,6 @@ function renderDPanel(){
       <div class="chip-preview">
         ${s.range?rangeChip(s.range):''}${s.atk?chip(s.atk):''}${s.def?chip(s.def):''}
       </div>
-      <button onclick="clearSlot(${n})" style="margin-top:6px;width:100%;padding:3px 0;font-size:11px;font-family:inherit;border:1px solid #E5E7EB;border-radius:5px;background:#F9FAFB;color:#6B7280;cursor:pointer;">クリア</button>
     </div>`;
   }).join('');
 }
@@ -1180,6 +1184,62 @@ function saveRule(){
   renderResults();
 }
 
+function copyRule(id) {
+  var rule = rules.find(function(r){ return r.id === id; });
+  if (!rule) return;
+  var SLOTS = [1,2,3,4];
+  // 行2: ルール名\tA1射程\t...\tD4射程
+  var row2 = [rule.name];
+  SLOTS.forEach(function(n){ row2.push((rule.a[n]||[]).join(',')); });
+  SLOTS.forEach(function(n){ row2.push((rule.d[n]||[]).join(',')); });
+  // 行3: 空\tA1tgt\t...\tD4tgt（ターゲットは大文字 D1/A2 形式）
+  var row3 = [''];
+  SLOTS.forEach(function(n){
+    var t = (rule.targetA && rule.targetA[n]) || '';
+    row3.push(t ? t.toUpperCase() : '');
+  });
+  SLOTS.forEach(function(n){
+    var t = (rule.targetD && rule.targetD[n]) || '';
+    row3.push(t ? t.toUpperCase() : '');
+  });
+
+  var tsv = row2.join('\t') + '\n' + row3.join('\t');
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(tsv).then(function(){
+      showCopyMsg(id, 'コピーしました');
+    }).catch(function(){
+      fallbackCopy(tsv, id);
+    });
+  } else {
+    fallbackCopy(tsv, id);
+  }
+}
+
+function fallbackCopy(text, id) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy');
+    showCopyMsg(id, 'コピーしました');
+  } catch(e) {
+    showCopyMsg(id, 'コピー失敗');
+  }
+  document.body.removeChild(ta);
+}
+
+function showCopyMsg(id, msg) {
+  var el = document.getElementById('copy-msg-' + id);
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = 'inline';
+  setTimeout(function(){ el.style.display = 'none'; }, 1800);
+}
+
 function deleteRule(id){
   rules=rules.filter(r=>r.id!==id);
   try{ localStorage.setItem('pvp_rules',JSON.stringify(rules)); }catch(e){}
@@ -1199,6 +1259,8 @@ function renderSavedRules(){
       <div class="rule-card-header" onclick="toggleRuleBody(${rule.id})">
         <span class="rule-card-name">${escHtml(rule.name)}${rule.fromSheet ? ' <span style="font-size:10px;font-weight:600;background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;border-radius:3px;padding:1px 5px;vertical-align:middle;">みん辞書より</span>' : ''}</span>
         <div class="rule-card-right">
+          <button class="btn-copy"   onclick="event.stopPropagation();copyRule(${rule.id})">コピー</button>
+          <span id="copy-msg-${rule.id}" style="font-size:10px;color:#059669;display:none;"></span>
           <button class="btn-edit"   onclick="event.stopPropagation();editRule(${rule.id})">編集</button>
           <button class="btn-danger" onclick="event.stopPropagation();deleteRule(${rule.id})">削除</button>
           <span class="rule-expand-btn" id="re-${rule.id}">▼</span>
